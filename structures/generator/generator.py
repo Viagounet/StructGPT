@@ -1,3 +1,4 @@
+from ast import literal_eval
 import os
 from typing import get_type_hints
 import openai
@@ -60,3 +61,5 @@ The user asked: {user_prompt}
         )["choices"][0]["message"]["content"]
         setattr(self, attribute, output)
         return self
+    def __str__(self) -> str:
+        return str(self.as_json())

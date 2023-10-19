@@ -28,3 +28,6 @@ class Star(Generator):
         super().__init__(**kwargs)
         self.description = description
 
+class Topics(Generator):
+    topics_list: List[str]
+    topics_descriptions: List[str]
