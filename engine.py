@@ -1,3 +1,4 @@
+from datetime import datetime
 import glob
 import os
 import pathlib
@@ -69,6 +70,25 @@ class Document:
             f"<{name}: {self.path.split('/')[-1]}>\n{self.content.content}\n<{name}/>"
         )
 
+    def __str__(self) -> str:
+        return self.content
+
+    def __repr__(self) -> str:
+        return f"{self.__class__}(name={self.path})"
+
+
+class ChunkDocument(Document):
+    def __init__(self, name: str, content: str, i: int) -> None:
+        super().__init__("None")
+        self.content = Text(content)
+        self.name = f"{name} - chunk {i}"
+
+    def __repr__(self) -> str:
+        return f"{self.__class__}(name={self.name})"
+
+    def create_embeddings(self, model, *args):
+        return self.content.create_embeddings(model)
+
 
 class TextDocument(Document):
     def __init__(self, path: str) -> None:
@@ -102,6 +122,9 @@ class Folder:
             document.create_embeddings(model)
         self.embeddings = np.array([doc.content.embeddings for doc in self.documents])
 
+    def __repr__(self):
+        return f"Folder(documents={self.documents})"
+
 
 class Library:
     """
@@ -117,11 +140,20 @@ class Library:
         else:
             raise KeyError
 
+    def load_folder_from_chunks(self, name: str, chunks):
+        self.create_folder(name)
+        self.folders[name].documents = [
+            ChunkDocument(name, chunk, i + 1) for i, chunk in enumerate(chunks)
+        ]
+
     def load_folder(self, name: str, path: str):
         self.create_folder(name)
         files = glob.glob(f"{path}/*")
         for file in files:
             self.folders[name].add_document(file)
+
+    def __str__(self) -> str:
+        return str(self.folders.values())
 
 
 class Prompt(Text):
@@ -141,6 +173,8 @@ class Prompt(Text):
 
 class AnswerLog:
     def __init__(self, prompt, answer, model, prices_prompt, prices_completion):
+        now = datetime.now()
+        self.date = now.strftime("%d/%m/%Y %H:%M:%S")
         self.prompt = prompt
         self.answer = answer
         self.prices = {
@@ -149,6 +183,9 @@ class AnswerLog:
             "total": (prompt.n_tokens * prices_prompt[model])
             + (answer.n_tokens * prices_completion[model]),
         }
+
+    def __str__(self) -> str:
+        return self.answer.content
 
 
 class Engine:
@@ -159,7 +196,7 @@ class Engine:
         self.embeddings_model = SentenceTransformer(
             "sentence-transformers/all-MiniLM-L6-v2"
         )
-
+        self.logs = []
         self.prices_prompt = {
             "dai-semafor-nlp-gpt-35-turbo-model-fr": 0.002 / 1000,
             "dai-semafor-nlp-gpt-4-model-fr": 0.03 / 1000,
@@ -180,14 +217,11 @@ class Engine:
             temperature=temperature,
         )["choices"][0]["message"]["content"]
         answer = Text(answer)
-        print(
-            AnswerLog(
-                prompt, answer, self.model, self.prices_prompt, self.prices_completion
-            )
-        )
-        return AnswerLog(
+        answer_log = AnswerLog(
             prompt, answer, self.model, self.prices_prompt, self.prices_completion
         )
+        self.logs.append(answer_log)
+        return answer_log
 
     def query_folder(
         self,
@@ -207,4 +241,10 @@ class Engine:
             documents = prompt.top_N_similar(folder, N=top_N)
         for document in documents:
             prompt.add_document(document)
-        return self.query(prompt.content)
+        return self.query(prompt.content, max_tokens=max_tokens)
+
+    def print_logs_history(self):
+        logs_string = ""
+        for log in self.logs:
+            logs_string += f"- {log.date}\n\t- Prompt: {log.prompt.content}\n\t- \n\t- Answer: {log.answer.content}\n\t- Price: {round(log.prices['total'], 5)}$ (prompt -> {round(log.prices['prompt'], 5)} / completion -> {round(log.prices['completion'], 5)})\n\n---\n"
+        print(logs_string)
