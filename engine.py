@@ -1,174 +1,10 @@
 from datetime import datetime
-import glob
 import os
-import pathlib
 import openai
-import numpy as np
 
 from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity
-import tiktoken
-
-from structures.entities import Topics
-
-
-class Text:
-    def __init__(self, content) -> None:
-        self.content = content
-        self.embeddings = np.array([])
-
-    def create_embeddings(self, model):
-        if self.embeddings.shape == (0,):
-            self.embeddings = model.encode(self.content)
-
-    def similarity(self, folder):  # todo, change for something more general
-        return cosine_similarity(self.embeddings.reshape(1, -1), folder.embeddings)[0]
-
-    def top_N_similar(self, folder, N=10):
-        similarities = self.similarity(folder)
-        sorted_pairs = sorted(
-            zip(folder.documents, similarities), key=lambda x: x[1], reverse=True
-        )
-        return [document for document, similarity in sorted_pairs[:N]]
-
-    def as_struct(self, struct: object):
-        return struct().source(
-            f"Fill the arguments using the following text (use the same language): {self.content}"
-        )
-
-    @property
-    def n_tokens(self):
-        encoding = tiktoken.get_encoding("cl100k_base")
-        return len(encoding.encode(self.content))
-
-    def __str__(self) -> str:
-        return self.content
-
-    def __repr__(self) -> str:
-        return self.content
-
-
-class Document:
-    def __init__(self, path: str) -> None:
-        self.path = path
-        self.content = Text("")
-        self.embeddings = np.array([])
-
-    def create_embeddings(self, *args):
-        return None
-
-    @property
-    def formated(self):
-        name = (
-            str(self.__class__)
-            .split(".")[-1]
-            .replace(">", "")
-            .replace("<", "")
-            .replace("'", "")
-        )
-        return (
-            f"<{name}: {self.path.split('/')[-1]}>\n{self.content.content}\n<{name}/>"
-        )
-
-    def __str__(self) -> str:
-        return self.content
-
-    def __repr__(self) -> str:
-        return f"{self.__class__}(name={self.path})"
-
-
-class ChunkDocument(Document):
-    def __init__(self, name: str, content: str, i: int) -> None:
-        super().__init__("None")
-        self.content = Text(content)
-        self.name = f"{name} - chunk {i}"
-
-    def __repr__(self) -> str:
-        return f"{self.__class__}(name={self.name})"
-
-    def create_embeddings(self, model, *args):
-        return self.content.create_embeddings(model)
-
-
-class TextDocument(Document):
-    def __init__(self, path: str) -> None:
-        super().__init__(path)
-        with open(path, "r", encoding="utf-8") as f:
-            self.content = Text(f.read())
-
-    def create_embeddings(self, model, *args):
-        return self.content.create_embeddings(model)
-
-
-def document_router(path: str):
-    file_extension = pathlib.Path(path).suffix
-    if file_extension in [".txt", ".py"]:
-        return TextDocument(path)
-    pass
-
-
-class Folder:
-    def __init__(self):
-        self.documents = []
-        self.embeddings = np.array([])
-
-    def add_document(self, path: str):
-        document = document_router(path)
-        if document:
-            self.documents.append(document)
-
-    def create_embeddings(self, model, *args):
-        for document in self.documents:
-            document.create_embeddings(model)
-        self.embeddings = np.array([doc.content.embeddings for doc in self.documents])
-
-    def __repr__(self):
-        return f"Folder(documents={self.documents})"
-
-
-class Library:
-    """
-    The library stores and manages files.
-    """
-
-    def __init__(self):
-        self.folders = {}
-
-    def create_folder(self, name: str):
-        if name not in self.folders:
-            self.folders[name] = Folder()
-        else:
-            raise KeyError
-
-    def load_folder_from_chunks(self, name: str, chunks):
-        self.create_folder(name)
-        self.folders[name].documents = [
-            ChunkDocument(name, chunk, i + 1) for i, chunk in enumerate(chunks)
-        ]
-
-    def load_folder(self, name: str, path: str):
-        self.create_folder(name)
-        files = glob.glob(f"{path}/*")
-        for file in files:
-            self.folders[name].add_document(file)
-
-    def __str__(self) -> str:
-        return str(self.folders.values())
-
-
-class Prompt(Text):
-    def __init__(self, content: str) -> None:
-        super().__init__(content)
-        self.original_query = content
-        self.linked_documents = []
-
-    def add_document(self, document: Document):
-        self.linked_documents.append(document)
-        documents_part = "Listing documents: \n---\n"
-        for document in self.linked_documents:
-            documents_part += document.formated + "\n"
-        documents_part += "\n---\nUsing the documents, answer the user query: "
-        self.content = f"{documents_part}{self.original_query}"
+from documents.document import Prompt, Text
+from documents.library import Library
 
 
 class AnswerLog:
@@ -192,7 +28,6 @@ class Engine:
     def __init__(self, model):
         openai.api_key = os.getenv("OPENAI_API_KEY")
         self.model = model
-        self.library = Library()
         self.embeddings_model = SentenceTransformer(
             "sentence-transformers/all-MiniLM-L6-v2"
         )
@@ -207,6 +42,13 @@ class Engine:
             "dai-semafor-nlp-gpt-4-model-fr": 0.06 / 1000,
             "dai-semafor-nlp-gpt-4-32k-model-fr": 0.12 / 1000,
         }
+        self.parameters = {
+            "chunking_strategy": {
+                ".txt": {"strategy": "pattern", "pattern": "\n"},
+                ".py": {"strategy": "pattern", "pattern": "class"},
+            }
+        }
+        self.library = Library(chunking_strategy=self.parameters["chunking_strategy"])
 
     def query(self, prompt: str, max_tokens: int = 256, temperature: float = 0):
         prompt = Prompt(prompt)
@@ -221,7 +63,7 @@ class Engine:
             prompt, answer, self.model, self.prices_prompt, self.prices_completion
         )
         self.logs.append(answer_log)
-        return answer_log
+        return answer
 
     def query_folder(
         self,

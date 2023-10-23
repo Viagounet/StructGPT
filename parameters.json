@@ -1,0 +1,12 @@
+{
+    "chunking_strategy": {
+        ".txt": {
+            "strategy": "pattern",
+            "pattern": "\n"
+        },
+        ".py": {
+            "strategy": "pattern",
+            "pattern": "\n"
+        }
+    }
+}
