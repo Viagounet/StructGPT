@@ -19,9 +19,9 @@ class Text:
     def top_N_similar(self, folder, N=10):
         similarities = self.similarity(folder)
         sorted_pairs = sorted(
-            zip(folder.documents, similarities), key=lambda x: x[1], reverse=True
+            zip(folder.chunks, similarities), key=lambda x: x[1], reverse=True
         )
-        return [document for document, similarity in sorted_pairs[:N]]
+        return [chunk for chunk, similarity in sorted_pairs[:N]]
 
     def as_struct(self, struct: object):
         return struct().source(
@@ -46,6 +46,21 @@ class Chunk(Text):
         self.document = document
         self.i = i
         self.name = f"{self.document.path.split('/')[-1]}-{i}"
+
+    @property
+    def formated(self):
+        string_formated = ""
+        name = (
+            str(self.__class__)
+            .split(".")[-1]
+            .replace(">", "")
+            .replace("<", "")
+            .replace("'", "")
+        )
+        string_formated += (
+            f"<{name}: {self.name}>\n{self.content}\n</{name}: {self.name}>\n\n"
+        )
+        return string_formated
 
 
 class Document:
@@ -107,13 +122,56 @@ class TextDocument(Document):
         super().__init__(content, chunking_strategy, path=path)
 
 
+class TeamsTranscriptDocument(Document):
+    def __init__(self, path: str, chunking_strategy: dict) -> None:
+        with open(path, "r", encoding="utf-8") as f:
+            content = f.read()
+            self.transcript = self.parse_transcript(content)
+            transcript_str = ""
+            for turn in self.transcript:
+                transcript_str += f"{turn['speaker']}: {turn['text']}\n\n"
+        self.path = path
+        super().__init__(transcript_str, chunking_strategy, path=path)
+
+    def parse_transcript(self, transcript):
+        result = []
+        current_speaker = None
+        current_text = ""
+
+        for line in transcript.split("\n"):
+            if line.startswith("<v"):
+                speaker_start = line.find("<v") + 2
+                speaker_end = line.find(">")
+                speaker = line[speaker_start:speaker_end].strip()
+
+                text_start = line.find(">", speaker_end) + 1
+                text_end = line.find("</v>")
+                text = line[text_start:text_end].strip()
+
+                if current_speaker is None:
+                    current_speaker = speaker
+                    current_text = text
+                elif current_speaker == speaker:
+                    current_text += " " + text
+                else:
+                    result.append({"speaker": current_speaker, "text": current_text})
+                    current_speaker = speaker
+                    current_text = text
+
+        if current_speaker is not None:
+            result.append({"speaker": current_speaker, "text": current_text})
+
+        return result
+
+
 def document_router(path: str, chunking_strategy: dict):
     file_extension = pathlib.Path(path).suffix
     if file_extension == ".txt":
         return TextDocument(path, chunking_strategy[".txt"])
     if file_extension == ".py":
-        print(chunking_strategy)
         return TextDocument(path, chunking_strategy[".py"])
+    if file_extension == ".vtt":
+        return TeamsTranscriptDocument(path, chunking_strategy[".vtt"])
     pass
 
 
@@ -124,6 +182,8 @@ class Prompt(Text):
         self.linked_documents = []
 
     def add_document(self, document: Document):
+        print(document)
+        print("@@@@@@@@@@@@@@@@@@@@")
         self.linked_documents.append(document)
         documents_part = "Listing documents: \n---\n"
         for document in self.linked_documents:

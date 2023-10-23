@@ -25,7 +25,7 @@ class AnswerLog:
 
 
 class Engine:
-    def __init__(self, model):
+    def __init__(self, model, parameters=None):
         openai.api_key = os.getenv("OPENAI_API_KEY")
         self.model = model
         self.embeddings_model = SentenceTransformer(
@@ -42,12 +42,16 @@ class Engine:
             "dai-semafor-nlp-gpt-4-model-fr": 0.06 / 1000,
             "dai-semafor-nlp-gpt-4-32k-model-fr": 0.12 / 1000,
         }
-        self.parameters = {
-            "chunking_strategy": {
-                ".txt": {"strategy": "pattern", "pattern": "\n"},
-                ".py": {"strategy": "pattern", "pattern": "class"},
+        if not parameters:
+            self.parameters = {
+                "chunking_strategy": {
+                    ".txt": {"strategy": "pattern", "pattern": "\n"},
+                    ".py": {"strategy": "pattern", "pattern": "class"},
+                }
             }
-        }
+        else:
+            self.parameters = parameters
+
         self.library = Library(chunking_strategy=self.parameters["chunking_strategy"])
 
     def query(self, prompt: str, max_tokens: int = 256, temperature: float = 0):

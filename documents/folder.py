@@ -7,11 +7,13 @@ class Folder:
         self.documents = []
         self.embeddings = np.array([])
         self.chunking_strategy = chunking_strategy
+        self.chunks = []
 
     def add_document(self, path: str):
         document = document_router(path, self.chunking_strategy)
         if document:
             self.documents.append(document)
+            self.chunks += document.content
 
     def create_embeddings(self, model, *args):
         embeddings_array = []
