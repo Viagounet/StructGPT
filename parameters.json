@@ -1,11 +1,17 @@
 {
     "chunking_strategy": {
         ".txt": {
-            "strategy": "pattern",
+            "strategy": "tokens",
+            "max_tokens": 300,
             "pattern": "\n"
         },
         ".py": {
             "strategy": "pattern",
+            "pattern": "\n"
+        },
+        ".pdf": {
+            "strategy": "tokens",
+            "max_tokens": 300,
             "pattern": "\n"
         }
     }

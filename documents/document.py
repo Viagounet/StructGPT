@@ -3,6 +3,8 @@ import numpy as np
 import tiktoken
 from sklearn.metrics.pairwise import cosine_similarity
 
+from documents.pdf_utils import pdf_to_text
+
 
 class Text:
     def __init__(self, content) -> None:
@@ -98,7 +100,23 @@ class Document:
         strategy = chunking_strategy["strategy"]
         if strategy == "tokens":
             max_tokens = chunking_strategy["max_tokens"]
-            raise NotImplementedError
+            pattern = chunking_strategy["pattern"]
+            encoding = tiktoken.get_encoding("cl100k_base")
+
+            transcript_parts = []
+            turns = content.split(pattern)
+            current_segment = ""
+            for turn in turns:
+                if len(encoding.encode(current_segment)) > max_tokens:
+                    transcript_parts.append(current_segment)
+                    current_segment = turn
+                else:
+                    current_segment += turn + pattern
+            return [
+                Chunk(chunk_content, self, i)
+                for i, chunk_content in enumerate(transcript_parts)
+            ]
+
         if strategy == "pattern":
             pattern = chunking_strategy["pattern"]
             return [
@@ -120,6 +138,13 @@ class TextDocument(Document):
             content = f.read()
         self.path = path
         super().__init__(content, chunking_strategy, path=path)
+
+
+class PDFDocument(Document):
+    def __init__(self, path, chunking_strategy: dict) -> None:
+        content = pdf_to_text(path)
+        self.path = path
+        super().__init__(content, chunking_strategy, path)
 
 
 class TeamsTranscriptDocument(Document):
@@ -172,6 +197,8 @@ def document_router(path: str, chunking_strategy: dict):
         return TextDocument(path, chunking_strategy[".py"])
     if file_extension == ".vtt":
         return TeamsTranscriptDocument(path, chunking_strategy[".vtt"])
+    if file_extension == ".pdf":
+        return PDFDocument(path, chunking_strategy[".pdf"])
     pass
 
 
@@ -182,11 +209,9 @@ class Prompt(Text):
         self.linked_documents = []
 
     def add_document(self, document: Document):
-        print(document)
-        print("@@@@@@@@@@@@@@@@@@@@")
         self.linked_documents.append(document)
         documents_part = "Listing documents: \n---\n"
         for document in self.linked_documents:
-            documents_part += document.formated + "\n"
-        documents_part += "\n---\nUsing the documents, answer the user query: "
+            documents_part += document.formated
+        documents_part += "\n---\nUsing the documents, answer the user query in the same language as his: "
         self.content = f"{documents_part}{self.original_query}"
