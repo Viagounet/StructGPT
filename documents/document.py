@@ -3,7 +3,7 @@ import numpy as np
 import tiktoken
 from sklearn.metrics.pairwise import cosine_similarity
 
-from documents.pdf_utils import pdf_to_text
+from documents.parsing_utils import clean_html, pdf_to_text
 
 
 class Text:
@@ -47,13 +47,17 @@ class Chunk(Text):
         super().__init__(content)
         self.document = document
         self.i = i
-        self.name = f"{self.document.path.split('/')[-1]}-{i}"
+        print(str(self.document.__class__))
+        if "WebDocument" in str(self.document.__class__):
+            self.name = self.document.path
+        else:
+            self.name = f"{self.document.path.split('/')[-1]}-{i}"
 
     @property
     def formated(self):
         string_formated = ""
         name = (
-            str(self.__class__)
+            str(self.document.__class__)
             .split(".")[-1]
             .replace(">", "")
             .replace("<", "")
@@ -99,13 +103,21 @@ class Document:
     def chunks(self, content, chunking_strategy: str):
         strategy = chunking_strategy["strategy"]
         if strategy == "tokens":
+            pattern = ""
             max_tokens = chunking_strategy["max_tokens"]
-            pattern = chunking_strategy["pattern"]
-            encoding = tiktoken.get_encoding("cl100k_base")
+            if "pattern" not in chunking_strategy.keys():
+                turns = list(content)
+            else:
+                pattern = chunking_strategy["pattern"]
+                if pattern == "":
+                    turns = list(content)
+                else:
+                    turns = content.split(pattern)
 
+            encoding = tiktoken.get_encoding("cl100k_base")
             transcript_parts = []
-            turns = content.split(pattern)
             current_segment = ""
+
             for turn in turns:
                 if len(encoding.encode(current_segment)) > max_tokens:
                     transcript_parts.append(current_segment)
@@ -145,6 +157,13 @@ class PDFDocument(Document):
         content = pdf_to_text(path)
         self.path = path
         super().__init__(content, chunking_strategy, path)
+
+
+class WebDocument(Document):
+    def __init__(self, url: str, chunking_strategy: dict) -> None:
+        self.path = url
+        content = clean_html(url)
+        super().__init__(content, chunking_strategy, url)
 
 
 class TeamsTranscriptDocument(Document):
@@ -190,6 +209,9 @@ class TeamsTranscriptDocument(Document):
 
 
 def document_router(path: str, chunking_strategy: dict):
+    if "https://" in path or "http://" in path:
+        return WebDocument(path, chunking_strategy["http"])
+
     file_extension = pathlib.Path(path).suffix
     if file_extension == ".txt":
         return TextDocument(path, chunking_strategy[".txt"])

@@ -22,5 +22,12 @@ class Folder:
             embeddings_array += document.embeddings.tolist()
         self.embeddings = np.array(embeddings_array)
 
+    def add_website(self, url: str):
+        document = document_router(url, self.chunking_strategy)
+        print(document)
+        if document:
+            self.documents.append(document)
+            self.chunks += document.content
+
     def __repr__(self):
         return f"Folder(documents={self.documents})"
