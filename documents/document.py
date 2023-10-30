@@ -25,9 +25,11 @@ class Text:
         )
         return [chunk for chunk, similarity in sorted_pairs[:N]]
 
-    def as_struct(self, struct: object):
+    def as_struct(self, struct: object, model):
         return struct().source(
-            f"Fill the arguments using the following text (use the same language): {self.content}"
+            f"Fill the arguments using the following text (use the same language): {self.content}",
+            model,
+            model_type="engine",
         )
 
     @property
