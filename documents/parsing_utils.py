@@ -1,6 +1,5 @@
 import pytesseract
 from pdf2image import convert_from_path
-import markdownify
 from bs4 import BeautifulSoup
 import requests
 
@@ -26,3 +25,25 @@ def clean_html(url: str) -> str:
     head = soup.head.get_text(strip=True)
     body = soup.body.get_text(strip=True)
     return f"""URL: {url}\nHEADER: {head}\n\n---\n\nContent: {body}"""
+
+def thread_parsing(thread_id: str):
+    """
+    thread id format -> chan:board:thread
+    """
+    chan, board, thread = thread_id.split(":")
+    url = f"https://boards.4channel.org/{board}/thread/{thread}"
+    soup = BeautifulSoup(requests.get(url).text, "lxml")
+
+    post_message_tags = soup.find_all(class_="postMessage")
+
+    for tag in post_message_tags:
+        br_tags = tag.find_all('br')
+        for br in br_tags:
+            br.replace_with("\n")
+    thread_string = ""
+    # Extract and print the modified text inside each "postMessage" tag
+    for tag in post_message_tags:
+        thread_string += tag.get_text() + "\n"
+        thread_string += "------------\n"
+    return thread_string
+

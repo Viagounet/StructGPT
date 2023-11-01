@@ -17,6 +17,10 @@
         "http": {
             "strategy": "tokens",
             "max_tokens": 512
+        },
+        "4chan": {
+            "strategy": "pattern",
+            "pattern": "------------"
         }
     }
 }

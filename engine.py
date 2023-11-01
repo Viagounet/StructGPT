@@ -1,10 +1,10 @@
 from datetime import datetime
 import os
+from typing import List
 import openai
 
 from sentence_transformers import SentenceTransformer
-from documents.document import Prompt, Text
-from documents.library import Library
+from documents.document import Chunk, Prompt, Text, Library
 
 
 class AnswerLog:
@@ -33,14 +33,14 @@ class Engine:
         )
         self.logs = []
         self.prices_prompt = {
-            "dai-semafor-nlp-gpt-35-turbo-model-fr": 0.002 / 1000,
-            "dai-semafor-nlp-gpt-4-model-fr": 0.03 / 1000,
-            "dai-semafor-nlp-gpt-4-32k-model-fr": 0.06 / 1000,
+            "gpt-3.5-turbo": 0.002 / 1000,
+            "gpt-4": 0.03 / 1000,
+            "gpt-4-32k": 0.06 / 1000,
         }
         self.prices_completion = {
-            "dai-semafor-nlp-gpt-35-turbo-model-fr": 0.002 / 1000,
-            "dai-semafor-nlp-gpt-4-model-fr": 0.06 / 1000,
-            "dai-semafor-nlp-gpt-4-32k-model-fr": 0.12 / 1000,
+            "gpt-3.5-turbo": 0.002 / 1000,
+            "gpt-4": 0.06 / 1000,
+            "gpt-4-32k": 0.12 / 1000,
         }
         if not parameters:
             self.parameters = {
@@ -53,6 +53,13 @@ class Engine:
             self.parameters = parameters
 
         self.library = Library(chunking_strategy=self.parameters["chunking_strategy"])
+
+    def find_similar_to(self, example_verbatim: str, folder: str, N=10):
+        example_verbatim = Text(example_verbatim)
+        example_verbatim.create_embeddings(self.embeddings_model)
+        folder = self.library.folders[folder]
+        folder.create_embeddings(self.embeddings_model)
+        return example_verbatim.top_N_similar(folder.documents, N)
 
     def query(self, prompt: str, max_tokens: int = 256, temperature: float = 0):
         prompt = Prompt(prompt)
@@ -84,11 +91,27 @@ class Engine:
         folder.create_embeddings(self.embeddings_model)
         documents = folder.documents
         if top_N:
-            documents = prompt.top_N_similar(folder, N=top_N)
+            documents = prompt.top_N_similar(documents, N=top_N)
         for document in documents:
             prompt.add_document(document)
         return self.query(prompt.content, max_tokens=max_tokens)
-
+    
+    def query_chunks(
+        self,
+        prompt: str,
+        chunks: List[Chunk],
+        max_tokens: int = 256,
+        temperature: float = 0,
+    ):
+        prompt_content = prompt
+        prompt = Prompt(prompt)
+        prompt.create_embeddings(self.embeddings_model)
+        for chunk in chunks:
+            chunk.create_embeddings(self.embeddings_model)
+        for chunk in chunks:
+            prompt.add_chunk(chunk)
+        return self.query(prompt.content, max_tokens=max_tokens)
+    
     def print_logs_history(self):
         logs_string = ""
         for log in self.logs:

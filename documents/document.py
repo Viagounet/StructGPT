@@ -1,9 +1,9 @@
+import glob
 import pathlib
 import numpy as np
 import tiktoken
 from sklearn.metrics.pairwise import cosine_similarity
-
-from documents.parsing_utils import clean_html, pdf_to_text
+from documents.parsing_utils import clean_html, pdf_to_text, thread_parsing
 
 
 class Text:
@@ -15,13 +15,23 @@ class Text:
         if self.embeddings.shape == (0,):
             self.embeddings = model.encode(self.content)
 
-    def similarity(self, folder):  # todo, change for something more general
-        return cosine_similarity(self.embeddings.reshape(1, -1), folder.embeddings)[0]
+    def similarity(self, documents):  # todo, change for something more general
+        embeddings_array = []
+        print("--------------------")
+        for document in documents:
+            embeddings_array += document.embeddings.tolist()
+        embeddings_array = np.array(embeddings_array)
+        if len(embeddings_array.shape) == 1:
+            embeddings_array = embeddings_array.reshape(int(embeddings_array.shape[0] / 384), 384)
+        return cosine_similarity(self.embeddings.reshape(1, -1), embeddings_array)[0]
 
-    def top_N_similar(self, folder, N=10):
-        similarities = self.similarity(folder)
+    def top_N_similar(self, documents, N=10):
+        chunks = []
+        for document in documents:
+            chunks += document.content
+        similarities = self.similarity(documents)
         sorted_pairs = sorted(
-            zip(folder.chunks, similarities), key=lambda x: x[1], reverse=True
+            zip(chunks, similarities), key=lambda x: x[1], reverse=True
         )
         return [chunk for chunk, similarity in sorted_pairs[:N]]
 
@@ -31,7 +41,11 @@ class Text:
             model,
             model_type="engine",
         )
-
+    
+    @property
+    def formated(self):
+        return f"TextDocument:\nContent: {self.content}"
+    
     @property
     def n_tokens(self):
         encoding = tiktoken.get_encoding("cl100k_base")
@@ -49,9 +63,10 @@ class Chunk(Text):
         super().__init__(content)
         self.document = document
         self.i = i
-        print(str(self.document.__class__))
         if "WebDocument" in str(self.document.__class__):
             self.name = self.document.path
+        elif "ImageBoardThreadDocument" in str(self.document.__class__):
+            self.name = f"4chan thread: {self.document.path}"
         else:
             self.name = f"{self.document.path.split('/')[-1]}-{i}"
 
@@ -166,7 +181,12 @@ class WebDocument(Document):
         self.path = url
         content = clean_html(url)
         super().__init__(content, chunking_strategy, url)
-
+        
+class ImageBoardThreadDocument(Document):
+    def __init__(self, thread_id: str, chunking_strategy: dict) -> None:
+        self.path = id
+        content = thread_parsing(thread_id)
+        super().__init__(content, chunking_strategy, thread_id)
 
 class TeamsTranscriptDocument(Document):
     def __init__(self, path: str, chunking_strategy: dict) -> None:
@@ -211,6 +231,8 @@ class TeamsTranscriptDocument(Document):
 
 
 def document_router(path: str, chunking_strategy: dict):
+    if "4chan:" in path:
+        return ImageBoardThreadDocument(path, chunking_strategy["4chan"])
     if "https://" in path or "http://" in path:
         return WebDocument(path, chunking_strategy["http"])
 
@@ -224,6 +246,29 @@ def document_router(path: str, chunking_strategy: dict):
     if file_extension == ".pdf":
         return PDFDocument(path, chunking_strategy[".pdf"])
     pass
+
+class Folder:
+    def __init__(self, chunking_strategy: dict):
+        self.documents = []
+        self.embeddings = np.array([])
+        self.chunking_strategy = chunking_strategy
+        self.chunks = []
+
+    def add_document(self, path: str):
+        document = document_router(path, self.chunking_strategy)
+        if document:
+            self.documents.append(document)
+            self.chunks += document.content
+
+    def create_embeddings(self, model, *args):
+        embeddings_array = []
+        for document in self.documents:
+            document.create_embeddings(model)
+            embeddings_array += document.embeddings.tolist()
+        self.embeddings = np.array(embeddings_array)
+
+    def __repr__(self):
+        return f"Folder(documents={self.documents})"
 
 
 class Prompt(Text):
@@ -239,3 +284,36 @@ class Prompt(Text):
             documents_part += document.formated
         documents_part += "\n---\nUsing the documents, answer the user query in the same language as his: "
         self.content = f"{documents_part}{self.original_query}"
+
+    def add_chunk(self, chunk: Chunk):
+        self.linked_documents.append(chunk)
+        documents_part = "Listing documents: \n---\n"
+        for chunk in self.linked_documents:
+            documents_part += chunk.formated
+        documents_part += "\n---\nUsing the documents, answer the user query in the same language as his: "
+        self.content = f"{documents_part}{self.original_query}"
+
+class Library:
+    """
+    The library stores and manages files.
+    """
+
+    def __init__(self, chunking_strategy):
+        self.folders = {}
+        self.chunking_strategy = chunking_strategy
+
+    def create_folder(self, name: str):
+        if name not in self.folders:
+            self.folders[name] = Folder(self.chunking_strategy)
+        else:
+            raise KeyError
+
+    def load_folder(self, name: str, path: str):
+        self.create_folder(name)
+        files = glob.glob(f"{path}/*")
+        for file in files:
+            self.folders[name].add_document(file)
+
+    def __str__(self) -> str:
+        return str(self.folders.values())
+
