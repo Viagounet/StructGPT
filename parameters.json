@@ -22,5 +22,8 @@
             "strategy": "pattern",
             "pattern": "------------"
         }
+    },
+    "ACCESS":{
+        "google_search": {"API_KEY": "", "CSE_ID": ""}
     }
 }

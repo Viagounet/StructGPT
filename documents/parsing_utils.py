@@ -2,7 +2,7 @@ import pytesseract
 from pdf2image import convert_from_path
 from bs4 import BeautifulSoup
 import requests
-
+import urllib.request
 
 def pdf_to_text(pdf_path):
     # Convert the PDF to images
@@ -21,10 +21,17 @@ def pdf_to_text(pdf_path):
 
 
 def clean_html(url: str) -> str:
-    soup = BeautifulSoup(requests.get(url).text, "lxml")
-    head = soup.head.get_text(strip=True)
-    body = soup.body.get_text(strip=True)
-    return f"""URL: {url}\nHEADER: {head}\n\n---\n\nContent: {body}"""
+    head = None
+    body = None
+    try:
+        fp = urllib.request.urlopen(url)
+        content = fp.read()
+        soup = BeautifulSoup(content, "lxml")
+        head = soup.head.get_text(strip=True)
+        body = soup.body.get_text(strip=True)
+        return f"""URL: {url}\nHEADER: {head}\n\n---\n\nContent: {body}"""
+    except Exception as ex:
+         return f"""URL: {url}\nHEADER: {head}\n\n---\n\nContent: {body} - {ex}"""
 
 def thread_parsing(thread_id: str):
     """

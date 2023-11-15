@@ -2,6 +2,8 @@ import glob
 import pathlib
 import numpy as np
 import tiktoken
+import requests
+
 from sklearn.metrics.pairwise import cosine_similarity
 from documents.parsing_utils import clean_html, pdf_to_text, thread_parsing
 
@@ -314,6 +316,23 @@ class Library:
         for file in files:
             self.folders[name].add_document(file)
 
+    def web_search(self, query, api_key, cse_id, n_results = 10, skip_files=False, **kwargs):
+        search_url = "https://www.googleapis.com/customsearch/v1"
+        params = {
+            'q': query,
+            'key': api_key,
+            'cx': cse_id,
+            'num': n_results
+        }
+        params.update(kwargs)
+        response = requests.get(search_url, params=params)
+        result = response.json()
+        websites = [l['link'] for l in result['items']] if 'items' in result else []
+        websites_filtered = [w for w in websites if w.split(".")[-1] not in ["txt", "pdf", "png"]]
+        if skip_files:
+            return websites_filtered
+        return websites
+    
     def __str__(self) -> str:
         return str(self.folders.values())
 
