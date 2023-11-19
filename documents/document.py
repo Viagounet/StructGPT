@@ -1,11 +1,14 @@
 import glob
+import importlib
 import pathlib
+import sys
 import numpy as np
 import tiktoken
 import requests
 
 from sklearn.metrics.pairwise import cosine_similarity
 from documents.parsing_utils import clean_html, pdf_to_text, thread_parsing
+from process.chunking_strategy import *
 
 
 class Text:
@@ -24,13 +27,15 @@ class Text:
             embeddings_array += document.embeddings.tolist()
         embeddings_array = np.array(embeddings_array)
         if len(embeddings_array.shape) == 1:
-            embeddings_array = embeddings_array.reshape(int(embeddings_array.shape[0] / 384), 384)
+            embeddings_array = embeddings_array.reshape(
+                int(embeddings_array.shape[0] / 384), 384
+            )
         return cosine_similarity(self.embeddings.reshape(1, -1), embeddings_array)[0]
 
     def top_N_similar(self, documents, N=10):
         chunks = []
         for document in documents:
-            chunks += document.content
+            chunks += document.chunks
         similarities = self.similarity(documents)
         sorted_pairs = sorted(
             zip(chunks, similarities), key=lambda x: x[1], reverse=True
@@ -43,11 +48,11 @@ class Text:
             model,
             model_type="engine",
         )
-    
+
     @property
     def formated(self):
         return f"TextDocument:\nContent: {self.content}"
-    
+
     @property
     def n_tokens(self):
         encoding = tiktoken.get_encoding("cl100k_base")
@@ -89,16 +94,18 @@ class Chunk(Text):
 
 
 class Document:
-    def __init__(
-        self, content, chunking_strategy: dict, path: str = "No path specified"
-    ) -> None:
-        self.content = self.chunks(content, chunking_strategy)
+    def __init__(self, content, path: str = "No path specified") -> None:
+        self.content = content
         self.embeddings = np.array([])
         self.path = path
+        if "::" in self.path:
+            self.document_type = self.path.split("::")[0]
+        else:
+            self.document_type = self.path.split(".")[-1]
 
     def create_embeddings(self, model, *args):
         list_embeddings = []
-        for chunk in self.content:
+        for chunk in self.chunks:
             chunk.create_embeddings(model)
             list_embeddings.append(chunk.embeddings)
         self.embeddings = np.array(list_embeddings)
@@ -113,50 +120,42 @@ class Document:
             .replace("<", "")
             .replace("'", "")
         )
-        for chunk in self.content:
+        for chunk in self.chunks:
             string_formated += (
                 f"<{name}: {chunk.name}>\n{chunk.content}\n</{name}: {chunk.name}>\n\n"
             )
         return string_formated
 
-    def chunks(self, content, chunking_strategy: str):
-        strategy = chunking_strategy["strategy"]
-        if strategy == "tokens":
-            pattern = ""
-            max_tokens = chunking_strategy["max_tokens"]
-            if "pattern" not in chunking_strategy.keys():
-                turns = list(content)
-            else:
-                pattern = chunking_strategy["pattern"]
-                if pattern == "":
-                    turns = list(content)
-                else:
-                    turns = content.split(pattern)
+    def chunking(self, chunking_parameters: dict, post_processing_parameters: dict):
+        chunking_strategy = chunking_parameters[self.document_type]["strategy"]
+        chunking_kwargs = chunking_parameters[self.document_type]["kwargs"]
+        print(post_processing_parameters)
+        post_processing_strategy = post_processing_parameters["strategy"]
+        post_processing_kwargs = post_processing_parameters["kwargs"]
+        print(post_processing_kwargs)
+        chunking_module = importlib.import_module(
+            f"process.chunking_strategy.{chunking_strategy}"
+        )
+        chunking_function = chunking_module.func
+        chunks = chunking_function(self, **chunking_kwargs)
 
-            encoding = tiktoken.get_encoding("cl100k_base")
-            transcript_parts = []
-            current_segment = ""
+        post_processing_module = importlib.import_module(
+            f"process.post_processing.{post_processing_strategy}"
+        )
+        post_processing_function = post_processing_module.post_processing
 
-            for turn in turns:
-                if len(encoding.encode(current_segment)) > max_tokens:
-                    transcript_parts.append(current_segment)
-                    current_segment = turn
-                else:
-                    current_segment += turn + pattern
-            return [
-                Chunk(chunk_content, self, i)
-                for i, chunk_content in enumerate(transcript_parts)
-            ]
+        chunks = chunking_function(self, **chunking_kwargs)
 
-        if strategy == "pattern":
-            pattern = chunking_strategy["pattern"]
-            return [
-                Chunk(chunk_content, self, i)
-                for i, chunk_content in enumerate(content.split(pattern))
-            ]
+        new_chunks = []
+        for chunk in chunks:
+            chunk.content = post_processing_function(
+                chunk.content, **post_processing_kwargs
+            )
+            new_chunks.append(chunk)
+        return new_chunks
 
     def __str__(self) -> str:
-        chunks_str = "\n".join([str(chunk) for chunk in self.content])
+        chunks_str = "\n".join([str(chunk) for chunk in self.chunks])
         return f"{self.path} ({len(self.content)} chunks)\n---\n{chunks_str}"
 
     def __repr__(self) -> str:
@@ -164,34 +163,40 @@ class Document:
 
 
 class TextDocument(Document):
-    def __init__(self, path: str, chunking_strategy: dict) -> None:
+    def __init__(self, path: str) -> None:
         with open(path, "r", encoding="utf-8") as f:
             content = f.read()
         self.path = path
-        super().__init__(content, chunking_strategy, path=path)
+        super().__init__(content, path=path)
 
 
 class PDFDocument(Document):
-    def __init__(self, path, chunking_strategy: dict) -> None:
+    def __init__(self, path) -> None:
         content = pdf_to_text(path)
         self.path = path
-        super().__init__(content, chunking_strategy, path)
+        super().__init__(content, path)
 
 
 class WebDocument(Document):
-    def __init__(self, url: str, chunking_strategy: dict) -> None:
-        self.path = url
-        content = clean_html(url)
-        super().__init__(content, chunking_strategy, url)
-        
+    def __init__(self, url: str) -> None:
+        self.path = url.split("::")[1]
+        print(self.path)
+        content = clean_html(self.path)
+        super().__init__(content, url)
+
+
 class ImageBoardThreadDocument(Document):
-    def __init__(self, thread_id: str, chunking_strategy: dict) -> None:
+    def __init__(self, thread_id: str) -> None:
         self.path = id
         content = thread_parsing(thread_id)
-        super().__init__(content, chunking_strategy, thread_id)
+        super().__init__(content, thread_id)
+
 
 class TeamsTranscriptDocument(Document):
-    def __init__(self, path: str, chunking_strategy: dict) -> None:
+    def __init__(
+        self,
+        path: str,
+    ) -> None:
         with open(path, "r", encoding="utf-8") as f:
             content = f.read()
             self.transcript = self.parse_transcript(content)
@@ -199,7 +204,7 @@ class TeamsTranscriptDocument(Document):
             for turn in self.transcript:
                 transcript_str += f"{turn['speaker']}: {turn['text']}\n\n"
         self.path = path
-        super().__init__(transcript_str, chunking_strategy, path=path)
+        super().__init__(transcript_str, path=path)
 
     def parse_transcript(self, transcript):
         result = []
@@ -232,35 +237,42 @@ class TeamsTranscriptDocument(Document):
         return result
 
 
-def document_router(path: str, chunking_strategy: dict):
-    if "4chan:" in path:
-        return ImageBoardThreadDocument(path, chunking_strategy["4chan"])
-    if "https://" in path or "http://" in path:
-        return WebDocument(path, chunking_strategy["http"])
+def document_router(path: str, convert_strategy: dict):
+    if "::" in path:
+        document_type = path.split("::")[0]
+    else:
+        document_type = path.split(".")[-1]
+    MyObjectClass = getattr(
+        sys.modules[__name__], convert_strategy[document_type]["type"]
+    )
+    return MyObjectClass(path)
 
-    file_extension = pathlib.Path(path).suffix
-    if file_extension == ".txt":
-        return TextDocument(path, chunking_strategy[".txt"])
-    if file_extension == ".py":
-        return TextDocument(path, chunking_strategy[".py"])
-    if file_extension == ".vtt":
-        return TeamsTranscriptDocument(path, chunking_strategy[".vtt"])
-    if file_extension == ".pdf":
-        return PDFDocument(path, chunking_strategy[".pdf"])
-    pass
 
 class Folder:
-    def __init__(self, chunking_strategy: dict):
+    def __init__(self, parameters: dict):
         self.documents = []
         self.embeddings = np.array([])
-        self.chunking_strategy = chunking_strategy
+        self.convert_strategy = parameters["processing"]["convert"]
+        self.chunking_strategy = parameters["processing"]["chunking_strategy"]
+        self.chunks_post_processing_strategy = parameters["processing"][
+            "chunks_post_processing"
+        ]
+
         self.chunks = []
 
     def add_document(self, path: str):
-        document = document_router(path, self.chunking_strategy)
+        document = document_router(path, self.convert_strategy)
+        if "::" in path:
+            document_type = path.split("::")[0]
+        else:
+            document_type = path.split(".")[-1]
+        post_processing_strategy = self.chunks_post_processing_strategy[document_type]
+        document.chunks = document.chunking(
+            self.chunking_strategy, post_processing_strategy
+        )
         if document:
             self.documents.append(document)
-            self.chunks += document.content
+            self.chunks += document.chunks
 
     def create_embeddings(self, model, *args):
         embeddings_array = []
@@ -295,18 +307,19 @@ class Prompt(Text):
         documents_part += "\n---\nUsing the documents, answer the user query in the same language as his: "
         self.content = f"{documents_part}{self.original_query}"
 
+
 class Library:
     """
     The library stores and manages files.
     """
 
-    def __init__(self, chunking_strategy):
+    def __init__(self, parameters):
         self.folders = {}
-        self.chunking_strategy = chunking_strategy
+        self.parameters = parameters
 
     def create_folder(self, name: str):
         if name not in self.folders:
-            self.folders[name] = Folder(self.chunking_strategy)
+            self.folders[name] = Folder(self.parameters)
         else:
             raise KeyError
 
@@ -316,23 +329,21 @@ class Library:
         for file in files:
             self.folders[name].add_document(file)
 
-    def web_search(self, query, api_key, cse_id, n_results = 10, skip_files=False, **kwargs):
+    def web_search(
+        self, query, api_key, cse_id, n_results=10, skip_files=False, **kwargs
+    ):
         search_url = "https://www.googleapis.com/customsearch/v1"
-        params = {
-            'q': query,
-            'key': api_key,
-            'cx': cse_id,
-            'num': n_results
-        }
+        params = {"q": query, "key": api_key, "cx": cse_id, "num": n_results}
         params.update(kwargs)
         response = requests.get(search_url, params=params)
         result = response.json()
-        websites = [l['link'] for l in result['items']] if 'items' in result else []
-        websites_filtered = [w for w in websites if w.split(".")[-1] not in ["txt", "pdf", "png"]]
+        websites = [l["link"] for l in result["items"]] if "items" in result else []
+        websites_filtered = [
+            w for w in websites if w.split(".")[-1] not in ["txt", "pdf", "png"]
+        ]
         if skip_files:
             return websites_filtered
         return websites
-    
+
     def __str__(self) -> str:
         return str(self.folders.values())
-

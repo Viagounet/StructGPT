@@ -2,4 +2,5 @@ orange.py
 example.py
 *.pyc
 real_estate_articles.py
-my_parameters.json
+my_parameters.yaml
+test_data

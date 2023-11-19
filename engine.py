@@ -4,7 +4,7 @@ from typing import List
 import openai
 
 from sentence_transformers import SentenceTransformer
-from documents.document import Chunk, Prompt, Text, Library
+from documents.document import Library, Text, Chunk, Prompt
 
 
 class AnswerLog:
@@ -52,7 +52,7 @@ class Engine:
         else:
             self.parameters = parameters
 
-        self.library = Library(chunking_strategy=self.parameters["chunking_strategy"])
+        self.library = Library(self.parameters)
 
     def find_similar_to(self, example_verbatim: str, folder: str, N=10):
         example_verbatim = Text(example_verbatim)
@@ -95,7 +95,7 @@ class Engine:
         for document in documents:
             prompt.add_document(document)
         return self.query(prompt.content, max_tokens=max_tokens)
-    
+
     def query_chunks(
         self,
         prompt: str,
@@ -111,7 +111,7 @@ class Engine:
         for chunk in chunks:
             prompt.add_chunk(chunk)
         return self.query(prompt.content, max_tokens=max_tokens)
-    
+
     def print_logs_history(self):
         logs_string = ""
         for log in self.logs:

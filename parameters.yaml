@@ -1,0 +1,63 @@
+variables:
+  services:
+    gsearch:
+      API: ""
+      CSE: ""
+
+processing:
+  convert:
+    txt:
+      type: TextDocument
+    pdf:
+      type: PDFDocument
+    py:
+      type: TextDocument
+    imageboard_thread:
+      type: ImageBoardThreadDocument
+    url:
+      type: WebDocument
+
+  chunking_strategy:
+    txt:
+      strategy: tokens
+      kwargs:
+        max_tokens: 512
+        pattern: ""
+    pdf:
+      strategy: tokens
+      kwargs:
+        max_tokens: 512
+        pattern: ""
+    py:
+      strategy: tokens
+      kwargs:
+        max_tokens: 512
+        pattern: ""
+    imageboard_thread:
+      strategy: pattern
+      kwargs:
+        pattern: "------------"
+    url:
+      strategy: tokens
+      kwargs:
+        max_tokens: 512
+        pattern: ""
+
+  chunks_post_processing:
+    txt:
+      strategy: default
+      kwargs:
+        model_path: {}
+    pdf:
+      strategy: default
+      kwargs: {}
+    py:
+      strategy: default
+      kwargs: {}
+    imageboard_thread:
+      strategy: default
+      kwargs: {}
+    url:
+      strategy: default
+      kwargs:
+        model_path: {}
