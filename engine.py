@@ -42,16 +42,7 @@ class Engine:
             "gpt-4": 0.06 / 1000,
             "gpt-4-32k": 0.12 / 1000,
         }
-        if not parameters:
-            self.parameters = {
-                "chunking_strategy": {
-                    ".txt": {"strategy": "pattern", "pattern": "\n"},
-                    ".py": {"strategy": "pattern", "pattern": "class"},
-                }
-            }
-        else:
-            self.parameters = parameters
-
+        self.parameters = parameters
         self.library = Library(self.parameters)
 
     def find_similar_to(self, example_verbatim: str, folder: str, N=10):

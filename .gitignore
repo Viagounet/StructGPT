@@ -3,4 +3,5 @@ example.py
 *.pyc
 real_estate_articles.py
 my_parameters.yaml
-test_data
+orange_example.py
+data
