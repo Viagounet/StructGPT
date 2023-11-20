@@ -7,7 +7,12 @@ import tiktoken
 import requests
 
 from sklearn.metrics.pairwise import cosine_similarity
-from documents.parsing_utils import clean_html, pdf_to_text, thread_parsing
+from documents.parsing_utils import (
+    clean_html,
+    pdf_to_text,
+    pptx_to_text,
+    thread_parsing,
+)
 from process.chunking_strategy import *
 
 
@@ -165,6 +170,13 @@ class TextDocument(Document):
             content = f.read()
         self.path = path
         super().__init__(content, path=path)
+
+
+class PowerPointDocument(Document):
+    def __init__(self, path: str = "No path specified") -> None:
+        content = pptx_to_text(path)
+        self.path = path
+        super().__init__(content, path)
 
 
 class PDFDocument(Document):

@@ -3,6 +3,9 @@ from pdf2image import convert_from_path
 from bs4 import BeautifulSoup
 import requests
 import urllib.request
+from pptx import Presentation
+import glob
+
 
 def pdf_to_text(pdf_path):
     # Convert the PDF to images
@@ -31,7 +34,8 @@ def clean_html(url: str) -> str:
         body = soup.body.get_text(strip=True)
         return f"""URL: {url}\nHEADER: {head}\n\n---\n\nContent: {body}"""
     except Exception as ex:
-         return f"""URL: {url}\nHEADER: {head}\n\n---\n\nContent: {body} - {ex}"""
+        return f"""URL: {url}\nHEADER: {head}\n\n---\n\nContent: {body} - {ex}"""
+
 
 def thread_parsing(thread_id: str):
     """
@@ -44,7 +48,7 @@ def thread_parsing(thread_id: str):
     post_message_tags = soup.find_all(class_="postMessage")
 
     for tag in post_message_tags:
-        br_tags = tag.find_all('br')
+        br_tags = tag.find_all("br")
         for br in br_tags:
             br.replace_with("\n")
     thread_string = ""
@@ -54,3 +58,13 @@ def thread_parsing(thread_id: str):
         thread_string += "------------\n"
     return thread_string
 
+
+def pptx_to_text(path):
+    txt = ""
+    prs = Presentation(path)
+
+    for slide in prs.slides:
+        for shape in slide.shapes:
+            if hasattr(shape, "text"):
+                txt += shape.text + "\n"
+    return txt
