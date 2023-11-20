@@ -22,7 +22,6 @@ class Text:
 
     def similarity(self, documents):  # todo, change for something more general
         embeddings_array = []
-        print("--------------------")
         for document in documents:
             embeddings_array += document.embeddings.tolist()
         embeddings_array = np.array(embeddings_array)
@@ -129,10 +128,8 @@ class Document:
     def chunking(self, chunking_parameters: dict, post_processing_parameters: dict):
         chunking_strategy = chunking_parameters[self.document_type]["strategy"]
         chunking_kwargs = chunking_parameters[self.document_type]["kwargs"]
-        print(post_processing_parameters)
         post_processing_strategy = post_processing_parameters["strategy"]
         post_processing_kwargs = post_processing_parameters["kwargs"]
-        print(post_processing_kwargs)
         chunking_module = importlib.import_module(
             f"process.chunking_strategy.{chunking_strategy}"
         )
@@ -180,7 +177,6 @@ class PDFDocument(Document):
 class WebDocument(Document):
     def __init__(self, url: str) -> None:
         self.path = url.split("::")[1]
-        print(self.path)
         content = clean_html(self.path)
         super().__init__(content, url)
 
