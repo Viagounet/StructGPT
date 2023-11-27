@@ -7,8 +7,10 @@ class Person(Generator):
     age: int
     gender: str
 
+
 class People(Generator):
     person_set: List[Person]
+
 
 class MysticalMonster(Generator):
     name: str
@@ -17,6 +19,7 @@ class MysticalMonster(Generator):
     powers_description: List[str]
     spirit: str
     back_story: str
+
 
 class Star(Generator):
     position: Tuple[float, float]
@@ -27,6 +30,7 @@ class Star(Generator):
     def __init__(self, description, **kwargs):
         super().__init__(**kwargs)
         self.description = description
+
 
 class Topics(Generator):
     topics_list: List[str]
