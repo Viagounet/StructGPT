@@ -1,4 +1,5 @@
-from datetime import datetime
+import datetime
+import json
 import os
 from typing import List
 import openai
@@ -9,8 +10,9 @@ from documents.document import Library, Text, Chunk, Prompt
 
 class AnswerLog:
     def __init__(self, prompt, answer, model, prices_prompt, prices_completion):
-        now = datetime.now()
+        now = datetime.datetime.now()
         self.date = now.strftime("%d/%m/%Y %H:%M:%S")
+        self.model = model
         self.prompt = prompt
         self.answer = answer
         self.prices = {
@@ -23,11 +25,27 @@ class AnswerLog:
     def __str__(self) -> str:
         return self.answer.content
 
+    @property
+    def data(self):
+        return {
+            "date": self.date,
+            "model": self.model,
+            "prompt": self.prompt.content,
+            "answer": self.answer.content,
+            "prices": self.prices,
+        }
+
 
 class Engine:
     def __init__(self, model, parameters=None):
         openai.api_key = os.getenv("OPENAI_API_KEY")
         self.model = model
+
+        now = datetime.datetime.now()
+
+        self.run_id = "run_" + now.strftime("%Y%m%d_%H%M%S")
+        self.n_queries = 0
+
         self.embeddings_model = SentenceTransformer(
             "sentence-transformers/all-MiniLM-L6-v2"
         )
@@ -43,6 +61,8 @@ class Engine:
             "gpt-4-32k": 0.12 / 1000,
         }
         self.parameters = parameters
+        if self.parameters["logs"]["autosave"]:
+            os.mkdir(f"{self.parameters['logs']['save_path']}/{self.run_id}")
         self.library = Library(self.parameters)
 
     def find_similar_to(self, example_verbatim: str, folder: str, N=10):
@@ -53,6 +73,7 @@ class Engine:
         return example_verbatim.top_N_similar(folder.documents, N)
 
     def query(self, prompt: str, max_tokens: int = 256, temperature: float = 0):
+        self.n_queries += 1
         prompt = Prompt(prompt)
         answer = openai.ChatCompletion.create(
             model=self.model,
@@ -64,6 +85,13 @@ class Engine:
         answer_log = AnswerLog(
             prompt, answer, self.model, self.prices_prompt, self.prices_completion
         )
+        if self.parameters["logs"]["autosave"]:
+            with open(
+                f"{self.parameters['logs']['save_path']}/{self.run_id}/{self.n_queries}.json",
+                "w",
+                encoding="utf-8",
+            ) as f:
+                json.dump(answer_log.data, f, ensure_ascii=False, indent=4)
         self.logs.append(answer_log)
         return answer
 

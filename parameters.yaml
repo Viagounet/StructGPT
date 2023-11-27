@@ -71,3 +71,10 @@ processing:
       strategy: default
       kwargs:
         model_path: {}
+
+engine:
+  too_many_tokens_strategy: cutoff
+  
+logs:
+  autosave: true
+  save_path: "./logs"
