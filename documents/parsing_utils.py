@@ -9,13 +9,15 @@ import glob
 
 def pdf_to_text(pdf_path):
     # Convert the PDF to images
-    images = convert_from_path(pdf_path)
+    images = convert_from_path(pdf_path, dpi=72, size=(840, 1190))
 
     # Extract text from each image
     texts = []
     for image in images:
         text = pytesseract.image_to_string(image)
-        texts.append(text)
+        if len(text) > 2:
+            print(text)
+            texts.append(text)
 
     # Combine all the text into one string
     full_text = "\n".join(texts)
