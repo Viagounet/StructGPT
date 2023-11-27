@@ -2,6 +2,7 @@ import glob
 import importlib
 import pathlib
 import sys
+from typing import List
 import numpy as np
 import tiktoken
 import requests
@@ -155,6 +156,13 @@ class Document:
             )
             new_chunks.append(chunk)
         return new_chunks
+
+    def search_chunks(self, search_request: str) -> List[Chunk]:
+        return [
+            chunk
+            for chunk in self.chunks
+            if search_request.lower() in chunk.content.lower()
+        ]
 
     def __str__(self) -> str:
         chunks_str = "\n".join([str(chunk) for chunk in self.chunks])
