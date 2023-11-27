@@ -117,18 +117,35 @@ class Engine:
 
     def query_chunks(
         self,
-        prompt: str,
+        prompt_initial: str,
         chunks: List[Chunk],
         max_tokens: int = 256,
         temperature: float = 0,
     ):
-        prompt_content = prompt
-        prompt = Prompt(prompt)
+        prompt_content = prompt_initial
+        prompt = Prompt(prompt_content)
         prompt.create_embeddings(self.embeddings_model)
         for chunk in chunks:
             chunk.create_embeddings(self.embeddings_model)
         for chunk in chunks:
             prompt.add_chunk(chunk)
+        print("long")
+        print(prompt.tokens)
+        if prompt.tokens > 512:
+            if (
+                self.parameters["engine"]["too_many_tokens_strategy"]
+                == "summarize_chunks"
+            ):
+                prompt.reset()
+                for chunk in chunks:
+                    print("Summ..")
+                    chunk.short_content = self.query(
+                        f"List the important information, keep only the essential : {chunk.content}"
+                    ).content
+                for chunk in chunks:
+                    prompt.add_chunk(chunk, short=True)
+        print("short")
+        print(prompt.tokens)
         return self.query(prompt.content, max_tokens=max_tokens)
 
     def print_logs_history(self):

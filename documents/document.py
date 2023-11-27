@@ -74,6 +74,7 @@ class Chunk(Text):
     def __init__(self, content, document, i) -> None:
         super().__init__(content)
         self.document = document
+        self.short_content = None
         self.i = i
         if "WebDocument" in str(self.document.__class__):
             self.name = self.document.path
@@ -81,6 +82,21 @@ class Chunk(Text):
             self.name = f"4chan thread: {self.document.path}"
         else:
             self.name = f"{self.document.path.split('/')[-1]}-{i}"
+
+    @property
+    def short_formated(self):
+        string_formated = ""
+        name = (
+            str(self.document.__class__)
+            .split(".")[-1]
+            .replace(">", "")
+            .replace("<", "")
+            .replace("'", "")
+        )
+        string_formated += (
+            f"<{name}: {self.name}>\n{self.short_content}\n</{name}: {self.name}>\n\n"
+        )
+        return string_formated
 
     @property
     def formated(self):
@@ -315,13 +331,24 @@ class Prompt(Text):
         documents_part += "\n---\nUsing the documents, answer the user query in the same language as his: "
         self.content = f"{documents_part}{self.original_query}"
 
-    def add_chunk(self, chunk: Chunk):
+    def add_chunk(self, chunk: Chunk, short=False):
         self.linked_documents.append(chunk)
         documents_part = "Listing documents: \n---\n"
         for chunk in self.linked_documents:
-            documents_part += chunk.formated
+            if short:
+                documents_part += chunk.short_formated
+            else:
+                documents_part += chunk.formated
         documents_part += "\n---\nUsing the documents, answer the user query in the same language as his: "
         self.content = f"{documents_part}{self.original_query}"
+
+    def reset(self):
+        self.linked_documents = []
+
+    @property
+    def tokens(self):
+        encoding = tiktoken.get_encoding("cl100k_base")
+        return len(encoding.encode(self.content))
 
 
 class Library:

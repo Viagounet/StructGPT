@@ -73,7 +73,7 @@ processing:
         model_path: {}
 
 engine:
-  too_many_tokens_strategy: cutoff
+  too_many_tokens_strategy: summarize_chunks
   
 logs:
   autosave: true
