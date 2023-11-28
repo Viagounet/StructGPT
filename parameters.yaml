@@ -36,10 +36,10 @@ processing:
         max_tokens: 512
         pattern: ""
     pptx:
-      strategy: tokens
+      strategy: pattern
       kwargs:
         max_tokens: 512
-        pattern: ""
+        pattern: "\n----------\n"
     imageboard_thread:
       strategy: pattern
       kwargs:

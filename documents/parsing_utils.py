@@ -69,4 +69,5 @@ def pptx_to_text(path):
         for shape in slide.shapes:
             if hasattr(shape, "text"):
                 txt += shape.text + "\n"
+        txt += shape.text + "\n----------\n"
     return txt
