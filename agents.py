@@ -29,6 +29,14 @@ class AdditionAF(AgentFunction):
         return a + b
 
 
+class FinalAnswerAF(AgentFunction):
+    def __init__(self, name, description) -> None:
+        super().__init__(name, description)
+
+    def func(self, your_final_answer: str) -> str:
+        return your_final_answer
+
+
 class JournalistAF(AgentFunction):
     def __init__(self, name, description, engine) -> None:
         self.engine = engine
@@ -39,6 +47,64 @@ class JournalistAF(AgentFunction):
             f"You're a highly skilled journalist. You're asked to write about :\nSubject: {subject}\nStyle: {style}\nLength: {length}\nLanguage: {language}",
             1024,
         ).content
+
+
+class DocumentMetaDataAF(AgentFunction):
+    def __init__(self, name, description, engine) -> None:
+        self.engine = engine
+        super().__init__(name, description)
+
+    def func(self, document_path: str) -> str:
+        folder = document_path.split("/")[0]
+        path = "/".join(document_path.split("/")[1:])
+        target_document = None
+        for document in self.engine.library.folders[folder].documents:
+            if document.path == path:
+                target_document = document
+                break
+        if not target_document:
+            return f"{document_path} was not found in the library."
+        metadata = []
+        for key, value in document.metadata.items():
+            metadata.append(f"{key}: {value}")
+
+        return "\n".join(metadata)
+
+
+class ReadDocumentAF(AgentFunction):
+    def __init__(self, name, description, engine) -> None:
+        self.engine = engine
+        super().__init__(name, description)
+
+    def func(self, document_path: str) -> str:
+        folder = document_path.split("/")[0]
+        path = "/".join(document_path.split("/")[1:])
+        target_document = None
+        for document in self.engine.library.folders[folder].documents:
+            if document.path == path:
+                target_document = document
+                break
+        if not target_document:
+            return f"{document_path} was not found in the library."
+        if len(document.chunks) > 1:
+            return f"{document_path} is too long and cannot be displayed at once. It is made of {len(document.chunks)} chunks. Please use the read_chunk() function if available. If not, end the program."
+        return document.content
+
+
+class ReadChunkAF(AgentFunction):
+    def __init__(self, name, description, engine) -> None:
+        self.engine = engine
+        super().__init__(name, description)
+
+    def func(self, document_path: str, chunk_number: int) -> str:
+        folder = document_path.split("/")[0]
+        path = "/".join(document_path.split("/")[1:])
+        target_document = None
+        for document in self.engine.library.folders[folder].documents:
+            if document.path == path:
+                target_document = document
+                break
+        return document.chunks[chunk_number].content
 
 
 class Agent:
@@ -55,6 +121,14 @@ class Agent:
         return "\n".join(function_descriptions)
 
     @property
+    def display_documents(self):
+        documents_string = "The following are the files you can work with. Always write their full path.\n"
+        for folder in self.engine.library.folders:
+            for document in self.engine.library.folders[folder].documents:
+                documents_string += f"- {folder}/{document.path}"
+        return documents_string
+
+    @property
     def header(self):
         return f"""Your goal is to [REPLACE].
 To achieve this goal you will make good use of the following functions:
@@ -64,10 +138,17 @@ Note: You will not make use of composite functions."""
 
     @property
     def body(self):
+        history_string = ""
         if self.history == []:
-            return ""
+            return {self.display_documents}
         else:
-            return "\n".join(self.history)
+            history_string += "These were the previous actions & results :\n\n"
+            for i, answer in enumerate(self.history):
+                func_name = answer["function_used"].name
+                args = answer["arguments"]
+                output = answer["output"]
+                history_string += f"- Action {i+1}: {func_name}\nArguments: {args}\nOutput: {output}\n"
+            return f"{self.display_documents}\n\n{history_string}"
 
     @property
     def footer(self):
@@ -86,14 +167,38 @@ Note: You will not make use of composite functions."""
         output = "No output"
         for function in self.agent_functions:
             if function.name == func_name:
-                output = function.func(*args)
-        return {
+                try:
+                    output = function.func(*args)  # Actually executes the function
+                except Exception as e:
+                    output = f"An error has occured: {e}"
+                break
+        answer = {
             "raw_answer": raw_gpt_answer,
             "explaination": explaination_string,
             "function_used": function,
             "arguments": args,
             "output": output,
         }
+        self.history.append(answer)
+        return answer
+
+    def run(self, instructions):
+        stop = False
+        while not stop:
+            ans = self.query(instructions)
+            if ans["function_used"].name == "final_answer":
+                stop = True
+            else:
+                print("(not yet completed)", ans["output"])
+        return print("\n(completed)", ans["output"])
+
+    def save_history(self, save_path: str):
+        file = open(save_path, "w", encoding="utf-8")
+        for ans in self.history:
+            file.write(
+                f"Explaination: {ans['explaination']}\nFunction used: {ans['function_used']}\nOutput: {ans['output']}\n-------\n"
+            )
+        file.close()
 
 
 def retrieve_function_details(cls, method_name):
@@ -151,12 +256,43 @@ with open("examples/parameters/philosophy.yaml", "r") as file:
     parameters = yaml.safe_load(file)
 
 engine = Engine("gpt-4", parameters=parameters)
+engine.library.create_folder("mouse")
+engine.library.folders["mouse"].add_document("test_data/cat.txt")
+
 
 identical = AgentFunction("identical", "returns an identical string n times")
 addition = AdditionAF("addition", "adds two number together")
+final_answer = FinalAnswerAF("final_answer", "your final answer to the user")
+document_reader = ReadDocumentAF(
+    "read_document", "will return the content of the document", engine
+)
+chunk_reader = ReadChunkAF(
+    "read_chunk",
+    "will return the content of a document chunk (index starts at 0)",
+    engine,
+)
+
 journalist = JournalistAF(
     "journalist", "will write a news report with great skill about any subject", engine
 )
-my_agent = Agent(engine, [journalist, identical, addition])
-agent_answer = my_agent.query("Write a report about how electricity works")
-print(agent_answer)
+metadata = DocumentMetaDataAF(
+    "metadata",
+    "returns metadata about the document (type, number of pages, chunks, letters etc.)",
+    engine,
+)
+
+my_agent = Agent(
+    engine,
+    [
+        final_answer,
+        journalist,
+        identical,
+        addition,
+        metadata,
+        document_reader,
+        chunk_reader,
+    ],
+)
+
+agent_answer = my_agent.run("write the outline of the document about cats")
+my_agent.save_history("agent_history.txt")

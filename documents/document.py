@@ -173,6 +173,19 @@ class Document:
             new_chunks.append(chunk)
         return new_chunks
 
+    @property
+    def metadata(self):
+        n_words = self.content.count(" ")
+        n_letters = len(self.content)
+        n_chunks = len(self.chunks)
+        return {
+            "path": self.path,
+            "words": n_words,
+            "letters": n_letters,
+            "chunks": n_chunks,
+            "document type": self.document_type,
+        }
+
     def search_chunks(self, search_request: str) -> List[Chunk]:
         return [
             chunk
