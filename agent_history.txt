@@ -1,0 +1,101 @@
+Explaination: First, I will read the metadata of both files to understand their structure and other details.
+
+Function used: <__main__.DocumentMetaDataAF object at 0x7fbf2afa6670>
+Output: path: test_data/cat_wikipedia.txt
+words: 2324
+letters: 13907
+chunks: 8
+document type: txt
+-------
+Explaination: To compare the structure of the two files, I need to get the metadata of the second file as well. This will give me information about the number of words, letters, chunks, and the document type of the second file.
+
+Function used: <__main__.DocumentMetaDataAF object at 0x7fbf2afa6670>
+Output: path: test_data/cat_vet.txt
+words: 1412
+letters: 8406
+chunks: 5
+document type: txt
+-------
+Explaination: To understand the differences in structure between the two files, we need to read and analyze their content. We will start by reading the first chunk of each document to get an initial understanding of their structure.
+
+
+Function used: <__main__.ReadChunkAF object at 0x7fbf2afa64f0>
+Output: Le Chat domestique (Felis catus) est une espèce de mammifères carnivores, de la famille des Félidés. Issu de la domestication du chat sauvage Felis silvestris, il était anciennement considéré comme une sous-espèce de celui-ci, sous la dénomination Felis silvestris catus.
+
+Le Chat domestique est l’un des principaux animaux de compagnie et compte aujourd’hui une cinquantaine de races différentes reconnues par les instances de certification. Dans de très nombreux pays, le chat entre dans le cadre de la législation sur les carnivores domestiques à l’instar du chien et du furet. Essentiellement territorial, le chat est un prédateur de petites proies comme les rongeurs ou les oiseaux. Les chats ont diverses vocalisations dont les ronronnements, les miaulements, les feulements ou les grognements, bien qu’ils communiquent principalement par des positions faciales et corporelles et des phéromones.
+
+Selon les résultats de travaux menés en 2006 et 20071, le chat domestique est une sous-espèce du chat sauvage issue d’ancêtres appartenant à la sous-espèce du chat sauvage d’Afrique (Felis silvestris lybica). Les premières domestications auraient eu lieu il y a 8 000 à 10 000 ans au Néolithique dans le Croissant fertile, époque correspondant au début de la culture de céréales et à l’engrangement de réserves susceptibles d’être attaquées par des rongeurs, le chat devenant alors pour l’Homme un auxiliaire utile se prêtant à la domestication.
+
+Tout d’abord vénéré par les Égyptiens, il fut diabolisé en Europe au Moyen Âge et ne retrouva ses lettres de noblesse qu’au XVIIIe siècle. En Asie, le chat reste synonyme de chance, de richesse ou de longévité. Ce félin a laissé son empreinte dans la culture populaire et artistique, tant au travers d’expressions populaires que de représentations diverses au sein de la littérature,
+-------
+Explaination: To understand the structure of the files, we need to read the content of the documents. We have already read the first chunk of the 'cat_wikipedia.txt' file. Now, we will read the first chunk of the 'cat_vet.txt' file to compare the structure.
+
+Function used: <__main__.ReadChunkAF object at 0x7fbf2afa64f0>
+Output: Les chats font partie du quotidien des Hommes depuis des siècles. Ils ont été idolâtrés par les Egyptiens pendant l’Antiquité grâce à leurs qualités de chasseur, puis renié au Moyen Âge à cause des superstitions et enfin de retour au sein des foyers lors de l’époque contemporaine. Aujourd’hui le chat possède une place importante en France avec 28% des foyers Français qui en possèdent un. Mignons, câlins et drôles, les chats dominent aussi Internet avec plus de 2 millions de vidéos de chats disponibles sur Youtube en 2015 et plus de 6.5 Milliards de photo de chats postées sur le web, ainsi que le mot « cat » qui fait parti des recherches les plus fréquentes sur Internet. En 2002, l’IFAW (Fonds international pour la protection des animaux) décide de faire du 8 Août la journée internationale du chat ! Et à cette occasion, nous vous proposons de découvrir 10 choses que vous ne savez pas sur nos amis les félins !
+Un chat passe 70% de sa vie à dormir
+
+Il n’est pas rare de voir son chat plonger dans les bras de Morphée sur un canapé, une chaise ou un lit quand il ne réclame pas à manger.
+Et pour cause ! Un chat passe 2/3 de sa vie à dormir soit 16 heures par jour en moyenne sur une année. Les chatons peuvent même dormir jusqu’à 22 heures par jour.
+Si les chats dorment autant, c’est parce qu’ils réservent leur énergie pour la chasse. Un chat domestiqué ou non gardera toujours son instinct de félin.
+Même s’il vient vous réclamer à manger, il voudra forcement jouer pour garder ses aptitudes de chasseurs intact et stimuler ses muscles.
+Les ronronnements du chat ont des effets thérapeutiques
+
+Le « ronron » des chats possède une vertu thérapeutique !
+Lorsque le chat ronronne, nous percevons ses vibrations à une basse fréquence (entre 20 et 50 hertz) par le biais de terminaisons nerveuses situées au ras de la peau.
+Ces
+-------
+Explaination: To highlight the differences in the structure of the two files, we need to read and analyze the content of the files. We have already read the first chunk of both files. Now, let's read the second chunk of both files to get more information about their structure.
+
+
+Function used: <__main__.ReadChunkAF object at 0x7fbf2afa64f0>
+Output:  de la peinture ou encore de la musique.
+Aidez-nous à améliorer Wikipédia en répondant à une courte enquête
+Les données du sondage sont traités par un tiers parti. Politique de confidentialité.
+Dénomination
+Le Wiktionnaire possède des entrées pour « chat », « chatte », « minet », « matou », « mistigri » et « greffier ».
+
+Le chat domestique mâle est couramment appelé un « chat » tandis que la femelle est appelée « chatte »2 et le jeune un « chaton »3,4,5.
+
+Le mot chat vient du bas latin cattus, qui, d’après le Littré (édition de 1878), provient du verbe cattare, qui signifie guetter, ce félin étant alors considéré comme un chasseur qui guette sa proie. Cette interprétation porte cependant à controverse, au vu des termes utilisés dans certaines langues afro-asiatiques (berbère kadiska)6 ou nilo-sahariennes (nubien kadis)6. En latin classique, « chat » se dit felis (d’où, en français, félin, félidés, etc.), mais désigne uniquement le chat sauvage d’Europe, tandis que cattus s’applique au chat domestique7.
+Chat domestique présentant son ventre.
+
+On désigne aussi plus familièrement le chat par minet ou minou et la chatte par minette. Ce terme, attesté dès 1560, provient de mine, nom populaire du chat en gallo-roman. Ce mot est à l’origine de l’expression dès potron-minet, qui signifie « de bon matin ». D’après le Littré, il s’agirait d’une déformation de paître au minet, c’est-à-dire du moment où le chat, qui se lève tôt, va chercher son paître : sa pâture, sa nourriture… Cette explication doit sans doute à la pudeur de cet auteur du XIXe siècle : selon Claude Duneton8, cette expression provient de poitron-jacquet, jacquet désignant un écureu
+-------
+Explaination: To highlight the differences in the structure of the two files, we need to read and analyze the content of the files. We have already read the first chunk of both files. Now, we will read the second chunk of the second file to compare it with the first file.
+
+Function used: <__main__.ReadChunkAF object at 0x7fbf2afa64f0>
+Output:  vibrations sonores sont un bienfait pour le corps car elles entrainent une production de sérotonine au sein de notre corps (l’hormone du bien-être).
+Mais ce n’est pas tout, les chats ronronnent lorsqu’ils sont blessés afin de pouvoir se rétablir plus rapidement grâce aux vibrations qu’ils émettent !
+Les chats miaulent uniquement pour communiquer avec les Humains
+
+Il est plus précis de dire que les chats domestiqués adultes miaulent uniquement pour communiquer avec leur maître(sse).
+Vous vous êtes surement déjà demandé pourquoi votre chat miaulait souvent en votre compagnie ?
+Les chats sauvages ne miaulent pas entre eux, ils gardent ce langage pour les humains. Et si l’on dit langage, c’est effectivement une tentative de communication entre votre chat et vous.
+Si votre chat miaule, c’est qu’il a quelque chose à vous dire ! Que ce soit pour manger, pour vous accueillir, pour demander des câlins, ou bien simplement « parler » avec vous.
+Donc si vous parlez à votre chat en vous disant qu’il ne comprends rien de toute façon. C’est faux, il essayera de vous répondre, il ne sait juste pas comment.
+Les chats se servent de leur tête pour retomber sur leurs pattes
+
+La fameuse théorie de la tartine, « Et si je mets une tartine sur le dos de mon chat et que je le lâche, que se passe t-il ? ». Rassurez-vous, il ne se passe rien, aucun phénomène surnaturel ou autres fantaisies !
+Mais comment expliquer qu’un chat retombe toujours sur ses pattes ?
+Le chat possède des « capteurs » dans ses moustaches (plus communément appelés des vibrisses) qui lui permettent dans un premier temps d'obtenir les informations nécessaires sur la distance qui le sépare de la chute. Dans un deuxième temps il utilise son oreille interne pour faire la différence entre le haut et le bas.
+Ainsi, grâce à son anatomie flexible, le chat commence d’abord par retourner sa tête puis son corps et enfin ses pattes.
+Il existe de la musique pour chats
+
+Il est connu que la musique éveille des émotions chez chacun d’entre 
+-------
+Explaination: To highlight the differences in the structure of the two files, we need to examine the content of the files more closely. We have already read the first two chunks of each file. Now, let's read the last chunk of each file to get a sense of how they conclude. This will help us understand the overall structure of the files.
+
+Function used: <__main__.ReadChunkAF object at 0x7fbf2afa64f0>
+Output:  l’intensité lumineuse influence la forme de sa pupille : allongée en fente étroite en pleine lumière, elle se dilate en un cercle parfait à la pénombre. Contrairement à une idée répandue, il est incapable de voir dans le noir complet. Il est toutefois beaucoup plus performant que l’œil humain dans la pénombre. La nuit, l’aspect brillant des yeux est dû à une couche de cellules de la rétine, appelée tapetum lucidum, qui agit comme un miroir et renvoie la lumière perçue, ce qui la fait passer une seconde fois dans la rétine et multiplie son acuité visuelle dans l’obscurité16.
+
+En revanche, il semblerait (cela est encore discuté) que le chat ne perçoive pas la couleur rouge et que, d’une manière générale, il distingue très mal les détails. Sa vision est granuleuse sur les images fixes tandis qu’un objet en mouvement lui apparaît plus net (par exemple, une proie en mouvement)16. Une particularité de l’œil du chat est qu’outre les paupières inférieure et supérieure, il est protégé par une troisième paupière, la membrane nictitante. Celle-ci se ferme à partir du bord inférieur du coin interne de l’œil vers l’extérieur. Quand elle ne se referme pas complètement, c’est souvent le signe d’un problème de santé chez le chat16. Les chats peuvent avoir les yeux de différentes couleurs : bleu, vert, jaune, marron, vairon…
+
+Une étude parue dans la revue Live Science, en 2014, par le biologiste anglais Ronald Douglas, de la City University of London, semble indiquer que le chat (et le chien) voit dans l'ultraviolet28. De fait il serait capable de voir dans son environnement des marqueurs biologiques des autres animaux (comme l'urine par exemple)29.
+
+-------
+Explaination: Based on the metadata and the chunks read from both documents, it is clear that the two files are structured differently. The 'cat_wikipedia.txt' file is more academic and informative, providing detailed information about cats, their history, and their characteristics. It is structured in a more formal and organized manner, with clear sections and subheadings. On the other hand, the 'cat_vet.txt' file is more casual and conversational, providing fun facts and trivia about cats. It is structured in a more informal and relaxed manner, with a conversational tone and language. 
+
+
+Function used: <__main__.FinalAnswerAF object at 0x7fbf2b2f6c10>
+Output: The 'cat_wikipedia.txt' file is structured in a formal and academic manner, providing detailed and organized information about cats. It has clear sections and subheadings, and uses formal language. The 'cat_vet.txt' file, on the other hand, is structured in a more informal and conversational manner. It provides fun facts and trivia about cats in a relaxed and casual tone. The language used is also more conversational and less formal.
+-------

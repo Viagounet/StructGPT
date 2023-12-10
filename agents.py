@@ -257,7 +257,8 @@ with open("examples/parameters/philosophy.yaml", "r") as file:
 
 engine = Engine("gpt-4", parameters=parameters)
 engine.library.create_folder("mouse")
-engine.library.folders["mouse"].add_document("test_data/cat.txt")
+engine.library.folders["mouse"].add_document("test_data/cat_wikipedia.txt")
+engine.library.folders["mouse"].add_document("test_data/cat_vet.txt")
 
 
 identical = AgentFunction("identical", "returns an identical string n times")
@@ -294,5 +295,7 @@ my_agent = Agent(
     ],
 )
 
-agent_answer = my_agent.run("write the outline of the document about cats")
+agent_answer = my_agent.run(
+    "Highlight the differences in which the two files about cats are structured"
+)
 my_agent.save_history("agent_history.txt")

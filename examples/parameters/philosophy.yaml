@@ -1,8 +1,8 @@
 variables:
   services:
     gsearch:
-      API: "AIzaSyAn8kuV7Db9vBm2zY0icyX02ry-BFZJU1c"
-      CSE: "87b181bf10767493d"
+      API: ""
+      CSE: ""
 
 processing:
   convert:
