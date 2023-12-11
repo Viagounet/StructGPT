@@ -1,3 +1,4 @@
+from ast import literal_eval
 import datetime
 import json
 import os
@@ -5,7 +6,16 @@ from typing import List
 import openai
 
 from sentence_transformers import SentenceTransformer
-from documents.document import Library, Text, Chunk, Prompt
+from documents.definitions.definitions import AnswerDocument, PDFReadableDocument
+from documents.document import (
+    Document,
+    Library,
+    Text,
+    Chunk,
+    Prompt,
+)
+
+from documents.pdf_utils import format_sections
 
 
 class AnswerLog:
@@ -60,10 +70,18 @@ class Engine:
             "gpt-4": 0.06 / 1000,
             "gpt-4-32k": 0.12 / 1000,
         }
+        self.level = {"low": "gpt-3.5-turbo", "high": "gpt-4"}
         self.parameters = parameters
         if self.parameters["logs"]["autosave"]:
             os.mkdir(f"{self.parameters['logs']['save_path']}/{self.run_id}")
         self.library = Library(self.parameters)
+
+        self.language = ""
+        if (
+            "language" in self.parameters["engine"].keys()
+            and self.parameters["engine"]["language"]
+        ):
+            self.language = f"(write in {self.parameters['engine']['language']})"
 
     def find_similar_to(self, example_verbatim: str, folder: str, N=10):
         example_verbatim = Text(example_verbatim)
@@ -81,7 +99,7 @@ class Engine:
             max_tokens=max_tokens,
             temperature=temperature,
         )["choices"][0]["message"]["content"]
-        answer = Text(answer)
+        answer = AnswerDocument(answer)
         answer_log = AnswerLog(
             prompt, answer, self.model, self.prices_prompt, self.prices_completion
         )
@@ -129,9 +147,7 @@ class Engine:
             chunk.create_embeddings(self.embeddings_model)
         for chunk in chunks:
             prompt.add_chunk(chunk)
-        print("long")
-        print(prompt.tokens)
-        if prompt.tokens > 512:
+        if prompt.tokens > 4096:
             if (
                 self.parameters["engine"]["too_many_tokens_strategy"]
                 == "summarize_chunks"
@@ -144,9 +160,56 @@ class Engine:
                     ).content
                 for chunk in chunks:
                     prompt.add_chunk(chunk, short=True)
-        print("short")
-        print(prompt.tokens)
         return self.query(prompt.content, max_tokens=max_tokens)
+
+    def query_document(
+        self,
+        document: Document,
+        query: str,
+        max_tokens: int = 256,
+        temperature: float = 0,
+    ) -> AnswerDocument:
+        answers = []
+        for chunk in document.chunks:
+            answer = self.query(
+                f"{chunk.formated}\n---\nUser query {self.language}: {query}",
+                max_tokens=max_tokens,
+            )
+            answers.append(answer)
+        return AnswerDocument("---\n".join([a.content for a in answers]))
+
+    def detect_outline(self, document):
+        if isinstance(document, PDFReadableDocument):
+            import fitz
+
+            doc = fitz.open(document.path)
+            outline_pages = []
+            # Iterate through each page
+            for page_number in range(len(doc)):
+                page = doc.load_page(page_number)
+                if (
+                    "sommaire" in page.get_text().lower()
+                    or "table des matières" in page.get_text().lower()
+                ):
+                    outline_pages.append(page)
+            main_outline_page = outline_pages[0]
+            main_outline_text = main_outline_page.get_text()
+            prompt = f"""{main_outline_text}
+---
+Extract the outline of the document, respecting the following format (note: write the dictionnary in FULL)
+my_outline = [{{'number':'1', 'page': '1', 'name':'main section', 'subsections':[{{...}}]}}, ...]
+---
+my_outline = ["""
+            old_model = self.model
+            self.model = self.level["high"]
+            ans = self.query(prompt, max_tokens=2048).content
+            document.outline = literal_eval("[" + ans)
+            document.string_outline = format_sections(document.outline)
+            self.model = old_model
+        else:
+            raise NotImplementedError(
+                "This kind of document cannot be treated yet to detect the outline."
+            )
 
     def print_logs_history(self):
         logs_string = ""

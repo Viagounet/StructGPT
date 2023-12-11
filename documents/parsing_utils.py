@@ -4,10 +4,17 @@ from bs4 import BeautifulSoup
 import requests
 import urllib.request
 from pptx import Presentation
-import glob
 
 
-def pdf_to_text(pdf_path):
+def pdf_to_text(pdf_path: str) -> str:
+    """Performs the OCR of the pdf using Tesseract
+
+    Args:
+        pdf_path (str): The path of the pdf
+
+    Returns:
+        str: The raw text from the pdf
+    """
     # Convert the PDF to images
     images = convert_from_path(pdf_path, dpi=72, size=(840, 1190))
 
@@ -16,7 +23,6 @@ def pdf_to_text(pdf_path):
     for image in images:
         text = pytesseract.image_to_string(image)
         if len(text) > 2:
-            print(text)
             texts.append(text)
 
     # Combine all the text into one string
@@ -25,7 +31,32 @@ def pdf_to_text(pdf_path):
     return full_text.replace("\n\n", "\n")
 
 
+def readable_pdf_to_text(doc):
+    """Reads a fitz document.
+
+    Args:
+        doc (_type_): _description_
+
+    Returns:
+        str: The raw text from the pdf
+    """
+    full_text = ""
+    for page in doc:  # iterate the document pages
+        full_text += page.get_text()
+    return full_text.replace("\n\n", "\n")
+
+
+def get_outline_pdf(pdf_path):
+    """
+    To do
+    """
+    return None
+
+
 def clean_html(url: str) -> str:
+    """
+    Gets the clean html content of a webpage
+    """
     head = None
     body = None
     try:
@@ -39,9 +70,14 @@ def clean_html(url: str) -> str:
         return f"""URL: {url}\nHEADER: {head}\n\n---\n\nContent: {body} - {ex}"""
 
 
-def thread_parsing(thread_id: str):
-    """
-    thread id format -> chan:board:thread
+def thread_parsing(thread_id: str) -> str:
+    """Parses an imageboard thread into readable text
+
+    Args:
+        thread_id (str): The imageboard thread id
+
+    Returns:
+        str: Raw text of the thread
     """
     chan, board, thread = thread_id.split(":")
     url = f"https://boards.4channel.org/{board}/thread/{thread}"
@@ -68,6 +104,7 @@ def pptx_to_text(path):
     for slide in prs.slides:
         for shape in slide.shapes:
             if hasattr(shape, "text"):
+                print(shape.left)
                 txt += shape.text + "\n"
-        txt += shape.text + "\n----------\n"
+        txt += "\n----------\n"
     return txt

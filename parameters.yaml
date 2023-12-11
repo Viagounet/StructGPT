@@ -18,13 +18,15 @@ processing:
       type: ImageBoardThreadDocument
     url:
       type: WebDocument
-
+    DEF:
+      type: DEFDocument
+      
   chunking_strategy:
     txt:
       strategy: tokens
       kwargs:
-        max_tokens: 512
-        pattern: ""
+        max_tokens: 2048
+        pattern: " "
     pdf:
       strategy: tokens
       kwargs:
@@ -50,6 +52,13 @@ processing:
         max_tokens: 512
         pattern: ""
 
+    DEF:
+      strategy: pattern
+      kwargs:
+        max_tokens: 512
+        pattern: "\n----------\n"
+
+
   chunks_post_processing:
     txt:
       strategy: default
@@ -68,6 +77,10 @@ processing:
       strategy: default
       kwargs: {}
     url:
+      strategy: default
+      kwargs:
+        model_path: {}
+    DEF:
       strategy: default
       kwargs:
         model_path: {}
