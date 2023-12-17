@@ -1,6 +1,7 @@
 import inspect
 
 import yaml
+from documents.document import Text
 
 from engine import Engine
 
@@ -112,6 +113,7 @@ class Agent:
         self.engine = engine
         self.agent_functions = agent_functions
         self.history = []
+        self.history_summary = ""
 
     @property
     def available_functions(self):
@@ -137,18 +139,40 @@ To achieve this goal you will make good use of the following functions:
 Note: You will not make use of composite functions."""
 
     @property
+    def history_text(self):
+        history_string = "These were the previous actions & results :\n\n"
+        for i, answer in enumerate(self.history):
+            func_name = answer["function_used"].name
+            args = answer["arguments"]
+            output = answer["output"]
+            history_string += (
+                f"- Action {i+1}: {func_name}\nArguments: {args}\nOutput: {output}\n"
+            )
+        return Text(history_string)
+
+    def summarize_history(self, goal):
+        print("==========================================================")
+        ans = engine.query(
+            f"The user goal was to : '{goal}'. Here is the history of your actions to accomplish the user goal :\n{self.history_summary}\n{self.history_text.content}\n---\nIn a bullet point format you will summarize : what you've learn in relation to the user's request & what is left to answer to fullfill the request",
+            max_tokens=2048,
+        )
+        print(ans.content)
+        self.history_summary = (
+            f"Here is a summary of what happened before: {ans.content}"
+        )
+        print(
+            "================================================================================"
+        )
+        self.history = []
+
+    @property
     def body(self):
-        history_string = ""
-        if self.history == []:
+        if self.history == [] and self.summarize_history == "":
             return {self.display_documents}
+        elif self.history == [] and self.summarize_history != "":
+            return f"{self.display_documents}\n\n{self.history_summary}"
         else:
-            history_string += "These were the previous actions & results :\n\n"
-            for i, answer in enumerate(self.history):
-                func_name = answer["function_used"].name
-                args = answer["arguments"]
-                output = answer["output"]
-                history_string += f"- Action {i+1}: {func_name}\nArguments: {args}\nOutput: {output}\n"
-            return f"{self.display_documents}\n\n{history_string}"
+            return f"{self.display_documents}\n\n{self.history_summary}\n\n{self.history_text.content}"
 
     @property
     def footer(self):
@@ -185,6 +209,9 @@ Note: You will not make use of composite functions."""
     def run(self, instructions):
         stop = False
         while not stop:
+            print(">>>>", self.history_text.n_tokens)
+            if self.history_text.n_tokens > 2000:
+                self.summarize_history(instructions)
             ans = self.query(instructions)
             if ans["function_used"].name == "final_answer":
                 stop = True
@@ -256,9 +283,8 @@ with open("examples/parameters/philosophy.yaml", "r") as file:
     parameters = yaml.safe_load(file)
 
 engine = Engine("gpt-4", parameters=parameters)
-engine.library.create_folder("mouse")
-engine.library.folders["mouse"].add_document("test_data/cat_wikipedia.txt")
-engine.library.folders["mouse"].add_document("test_data/cat_vet.txt")
+engine.library.create_folder("documents")
+engine.library.folders["documents"].add_document("test_data/pfe.txt")
 
 
 identical = AgentFunction("identical", "returns an identical string n times")
@@ -295,7 +321,11 @@ my_agent = Agent(
     ],
 )
 
-agent_answer = my_agent.run(
-    "Highlight the differences in which the two files about cats are structured"
-)
+
+instructions = """I want you to summarize what this document is and what it talks about.
+More precisely, I want you to tell me the overall structure of the document (what are the main parts? what language? what are the motivations? who's the author?)
+Then I want you to tell me more about the document content and to give example of similar documents that could be useful as references.
+Finally, I want you to propose improvements on the document. Please give a rather in-depth answer."""
+
+agent_answer = my_agent.run(instructions)
 my_agent.save_history("agent_history.txt")
