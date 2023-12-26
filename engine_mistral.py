@@ -10,7 +10,7 @@ from typing import List
 from documents.document import Library, Text, Chunk, Prompt
 
 class MistralEngine(Engine):
-    def __init__(self, parameters, system_description, cpu_offload=True):
+    def __init__(self, lora_path, parameters, system_description, cpu_offload=True):
         Engine.__init__(self, "mistral", parameters)
         self.system_description = system_description
         self.prices_prompt = {
@@ -20,7 +20,7 @@ class MistralEngine(Engine):
             "mistral": 0
         }
 
-        model_name_or_path = "mistralai/Mistral-7B-Instruct-v0.1"
+        model_name_or_path = "mistralai/Mistral-7B-Instruct-v0.2"
         config = AutoConfig.from_pretrained(model_name_or_path, trust_remote_code=True)
         config.max_position_embeddings = 8096
         quantization_config = BitsAndBytesConfig(
@@ -41,7 +41,7 @@ class MistralEngine(Engine):
         offload_folder="./offload"
         )
 
-        peft_model_id = "./mistral_function_calling_v0"
+        peft_model_id = lora_path
         self.hf_model.load_adapter(peft_model_id)
         self.tokenizer.pad_token = self.tokenizer.eos_token
         self.tokenizer.padding_side = "right"

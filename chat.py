@@ -7,7 +7,7 @@ with open("examples/parameters/philosophy.yaml", "r") as file:
     parameters = yaml.safe_load(file)
 
 #engine = Engine("gpt-3.5-turbo", parameters)
-engine = MistralEngine(parameters, "You are a helpful agent eager to discuss with everyone.")
+engine = MistralEngine("./mistral_philosopher-fr", parameters, "Vous êtes un professeur de philosophie, et vous répondez de manière détaillée aux questions d'un élève.", cpu_offload=False)
 
 running = True
 while running:
@@ -15,5 +15,5 @@ while running:
     if user_input == ":q":
         running = False
         break
-    ans = engine.query(user_input)
+    ans = engine.query(user_input, max_tokens=2048)
     print("Engine: " + ans.content)
