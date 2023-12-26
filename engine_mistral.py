@@ -4,12 +4,13 @@ from peft import AutoPeftModelForCausalLM, LoraConfig, get_peft_model, prepare_m
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 import json
 import datetime
-
+from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+import torch
 from typing import List
 from documents.document import Library, Text, Chunk, Prompt
 
 class MistralEngine(Engine):
-    def __init__(self, parameters, system_description):
+    def __init__(self, parameters, system_description, cpu_offload=True):
         Engine.__init__(self, "mistral", parameters)
         self.system_description = system_description
         self.prices_prompt = {
@@ -19,25 +20,43 @@ class MistralEngine(Engine):
             "mistral": 0
         }
 
-        # model = get_peft_model("./mistral_function_calling_v0", peft_config)
-        model_id = "mistralai/Mistral-7B-Instruct-v0.1"
-        peft_model_id = "./mistral_function_calling_v0"
+        model_name_or_path = "mistralai/Mistral-7B-Instruct-v0.1"
+        config = AutoConfig.from_pretrained(model_name_or_path, trust_remote_code=True)
+        config.max_position_embeddings = 8096
+        quantization_config = BitsAndBytesConfig(
+            llm_int8_enable_fp32_cpu_offload=cpu_offload,
+            bnb_4bit_quant_type='nf4',
+            bnb_4bit_use_double_quant=True,
+            bnb_4bit_compute_dtype=torch.bfloat16,
+            load_in_4bit=True
+        )
 
-        self.hf_model = AutoModelForCausalLM.from_pretrained(model_id, device_map='auto')
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path, use_fast=True)
+        self.hf_model = AutoModelForCausalLM.from_pretrained(
+        model_name_or_path,
+        config=config,
+        trust_remote_code=True,
+        quantization_config=quantization_config,
+        device_map="auto",
+        offload_folder="./offload"
+        )
+
+        peft_model_id = "./mistral_function_calling_v0"
         self.hf_model.load_adapter(peft_model_id)
-        self.tokenizer = AutoTokenizer.from_pretrained("mistralai/Mistral-7B-Instruct-v0.1")
         self.tokenizer.pad_token = self.tokenizer.eos_token
         self.tokenizer.padding_side = "right"
 
     def query(self, prompt: str, max_tokens: int = 256, temperature: float = 0):
+        self.n_queries += 1
         prompt = f"<s>### Instruction: {self.system_description}\n### Input:\n{prompt}\n### Response:"
-        encoded_input = self.tokenizer(prompt,  return_tensors="pt", add_special_tokens=True)
+        prompt = Prompt(prompt)
+        encoded_input = self.tokenizer(prompt.content,  return_tensors="pt", add_special_tokens=True)
         model_inputs = encoded_input.to('cuda')
-
         generated_ids = self.hf_model.generate(**model_inputs, max_new_tokens=max_tokens, do_sample=True, pad_token_id=self.tokenizer.eos_token_id)
-
         decoded_output = self.tokenizer.batch_decode(generated_ids)
-        answer = decoded_output[0].replace(prompt, "")
+        answer = decoded_output[0].split("### Response:")[1].replace("</s>", "")
+        if answer[0] == "\n":
+            answer = answer[1:]
         answer = Text(answer)
         answer_log = AnswerLog(
             prompt, answer, self.model, self.prices_prompt, self.prices_completion

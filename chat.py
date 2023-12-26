@@ -1,13 +1,13 @@
 import yaml
 
-from engine import Engine
-# from engine_mistral import MistralEngine
+#from engine import Engine
+from engine_mistral import MistralEngine
 
 with open("examples/parameters/philosophy.yaml", "r") as file:
     parameters = yaml.safe_load(file)
 
-engine = Engine("gpt-3.5-turbo", parameters)
-# engine = MistralEngine(parameters, "You are a helpful agent eager to discuss with everyone.")
+#engine = Engine("gpt-3.5-turbo", parameters)
+engine = MistralEngine(parameters, "You are a helpful agent eager to discuss with everyone.")
 
 running = True
 while running:

@@ -60,11 +60,8 @@ class DocumentMetaDataAF(AgentFunction):
         if document_path[0] == "/":
             document_path = document_path[1:]
 
-        print("@", document_path)
         folder = document_path.split("/")[0]
-        print("@@", folder)
         path = "/".join(document_path.split("/")[1:])
-        print("@@@", path)
 
         folder = document_path.split("/")[0]
         path = "/".join(document_path.split("/")[1:])
@@ -163,17 +160,12 @@ Note: You will not make use of composite functions."""
         return Text(history_string)
 
     def summarize_history(self, goal):
-        print("==========================================================")
         ans = self.engine.query(
             f"The user goal was to : '{goal}'. Here is the history of your actions to accomplish the user goal :\n{self.history_summary}\n{self.history_text.content}\n---\nIn a bullet point format you will summarize : what you've learn in relation to the user's request & what is left to answer to fullfill the request",
             max_tokens=2048,
         )
-        print(ans.content)
         self.history_summary = (
             f"Here is a summary of what happened before: {ans.content}"
-        )
-        print(
-            "================================================================================"
         )
         self.history = []
 
@@ -235,15 +227,14 @@ Note: You will not make use of composite functions."""
             i+=1
             if i == 10:
                 stop=True
-            print(">>>>", self.history_text.n_tokens)
             if self.history_text.n_tokens > 2000:
                 self.summarize_history(instructions)
             ans = self.query(instructions, save_for_dataset)
             if ans["function_used"].name == "final_answer":
                 stop = True
             else:
-                print("(not yet completed)", ans["output"])
-        return print("\n(completed)", ans["output"])
+                print("(not yet completed)", ans["explaination"])
+        return print("\n(completed)", ans["explaination"])
 
     def save_history(self, save_path: str):
         file = open(save_path, "w", encoding="utf-8")

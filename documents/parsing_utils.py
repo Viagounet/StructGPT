@@ -16,7 +16,6 @@ def pdf_to_text(pdf_path):
     for image in images:
         text = pytesseract.image_to_string(image)
         if len(text) > 2:
-            print(text)
             texts.append(text)
 
     # Combine all the text into one string
