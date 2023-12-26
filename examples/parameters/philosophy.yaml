@@ -27,7 +27,7 @@ processing:
       strategy: tokens
       kwargs:
         max_tokens: 512
-        pattern: ""
+        pattern: " "
     py:
       strategy: tokens
       kwargs:

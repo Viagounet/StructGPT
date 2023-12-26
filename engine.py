@@ -54,11 +54,13 @@ class Engine:
             "gpt-3.5-turbo": 0.002 / 1000,
             "gpt-4": 0.03 / 1000,
             "gpt-4-32k": 0.06 / 1000,
+            "gpt-4-1106-preview": 0.01 / 1000
         }
         self.prices_completion = {
             "gpt-3.5-turbo": 0.002 / 1000,
             "gpt-4": 0.06 / 1000,
             "gpt-4-32k": 0.12 / 1000,
+            "gpt-4-1106-preview": 0.03 / 1000
         }
         self.parameters = parameters
         if self.parameters["logs"]["autosave"]:

@@ -6,6 +6,7 @@ from typing import List
 import numpy as np
 import tiktoken
 import requests
+import os
 
 from sklearn.metrics.pairwise import cosine_similarity
 from documents.parsing_utils import (
@@ -307,6 +308,7 @@ class Folder:
 
     def add_document(self, path: str):
         document = document_router(path, self.convert_strategy)
+        document.path = document.path.replace("\\", "/")
         if "::" in path:
             document_type = path.split("::")[0]
         else:

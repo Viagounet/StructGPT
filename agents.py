@@ -1,6 +1,7 @@
 import inspect
-
+import random
 import yaml
+import json
 from documents.document import Text
 
 from engine import Engine
@@ -56,6 +57,15 @@ class DocumentMetaDataAF(AgentFunction):
         super().__init__(name, description)
 
     def func(self, document_path: str) -> str:
+        if document_path[0] == "/":
+            document_path = document_path[1:]
+
+        print("@", document_path)
+        folder = document_path.split("/")[0]
+        print("@@", folder)
+        path = "/".join(document_path.split("/")[1:])
+        print("@@@", path)
+
         folder = document_path.split("/")[0]
         path = "/".join(document_path.split("/")[1:])
         target_document = None
@@ -78,8 +88,8 @@ class ReadDocumentAF(AgentFunction):
         super().__init__(name, description)
 
     def func(self, document_path: str) -> str:
-        folder = document_path.split("/")[0]
-        path = "/".join(document_path.split("/")[1:])
+        if document_path[0] == "/":
+            document_path = document_path[1:]
         target_document = None
         for document in self.engine.library.folders[folder].documents:
             if document.path == path:
@@ -98,6 +108,8 @@ class ReadChunkAF(AgentFunction):
         super().__init__(name, description)
 
     def func(self, document_path: str, chunk_number: int) -> str:
+        if document_path[0] == "/":
+            document_path = document_path[1:]
         folder = document_path.split("/")[0]
         path = "/".join(document_path.split("/")[1:])
         target_document = None
@@ -152,7 +164,7 @@ Note: You will not make use of composite functions."""
 
     def summarize_history(self, goal):
         print("==========================================================")
-        ans = engine.query(
+        ans = self.engine.query(
             f"The user goal was to : '{goal}'. Here is the history of your actions to accomplish the user goal :\n{self.history_summary}\n{self.history_text.content}\n---\nIn a bullet point format you will summarize : what you've learn in relation to the user's request & what is left to answer to fullfill the request",
             max_tokens=2048,
         )
@@ -182,7 +194,7 @@ Note: You will not make use of composite functions."""
     def full_prompt(self):
         return f"{self.header}\n{self.body}\n{self.footer}"
 
-    def query(self, instruction):
+    def query(self, instruction, save_for_dataset):
         prompt = self.full_prompt.replace("[REPLACE]", instruction)
         raw_gpt_answer = self.engine.query(prompt, 512)
         explaination_string = raw_gpt_answer.content.split("Action: ")[0]
@@ -203,16 +215,30 @@ Note: You will not make use of composite functions."""
             "arguments": args,
             "output": output,
         }
+        r = random.randrange(1,10000000000000)
+        if save_for_dataset:
+            with open(f"for_dataset/{r}.json", "w", encoding="utf-8") as f:
+                prompt = f"""<s>### Instruction: Your role is to choose the corresponding function to answer the user query. You will be given a history of your previous actions and several other information in the input.
+### Input:
+{prompt}
+
+### Response:
+{raw_gpt_answer.content}</s>"""
+                json.dump({"prompt": prompt}, f)
         self.history.append(answer)
         return answer
 
-    def run(self, instructions):
+    def run(self, instructions, save_for_dataset):
         stop = False
+        i=0
         while not stop:
+            i+=1
+            if i == 10:
+                stop=True
             print(">>>>", self.history_text.n_tokens)
             if self.history_text.n_tokens > 2000:
                 self.summarize_history(instructions)
-            ans = self.query(instructions)
+            ans = self.query(instructions, save_for_dataset)
             if ans["function_used"].name == "final_answer":
                 stop = True
             else:
@@ -279,53 +305,53 @@ def parse_function_string(func_str):
         return "Invalid function string", []
 
 
-with open("examples/parameters/philosophy.yaml", "r") as file:
-    parameters = yaml.safe_load(file)
+# with open("examples/parameters/philosophy.yaml", "r") as file:
+#     parameters = yaml.safe_load(file)
 
-engine = Engine("gpt-4", parameters=parameters)
-engine.library.create_folder("documents")
-engine.library.folders["documents"].add_document("test_data/pfe.txt")
-
-
-identical = AgentFunction("identical", "returns an identical string n times")
-addition = AdditionAF("addition", "adds two number together")
-final_answer = FinalAnswerAF("final_answer", "your final answer to the user")
-document_reader = ReadDocumentAF(
-    "read_document", "will return the content of the document", engine
-)
-chunk_reader = ReadChunkAF(
-    "read_chunk",
-    "will return the content of a document chunk (index starts at 0)",
-    engine,
-)
-
-journalist = JournalistAF(
-    "journalist", "will write a news report with great skill about any subject", engine
-)
-metadata = DocumentMetaDataAF(
-    "metadata",
-    "returns metadata about the document (type, number of pages, chunks, letters etc.)",
-    engine,
-)
-
-my_agent = Agent(
-    engine,
-    [
-        final_answer,
-        journalist,
-        identical,
-        addition,
-        metadata,
-        document_reader,
-        chunk_reader,
-    ],
-)
+# engine = Engine("gpt-4", parameters=parameters)
+# engine.library.create_folder("documents")
+# engine.library.folders["documents"].add_document("test_data/pfe.txt")
 
 
-instructions = """I want you to summarize what this document is and what it talks about.
-More precisely, I want you to tell me the overall structure of the document (what are the main parts? what language? what are the motivations? who's the author?)
-Then I want you to tell me more about the document content and to give example of similar documents that could be useful as references.
-Finally, I want you to propose improvements on the document. Please give a rather in-depth answer."""
+# identical = AgentFunction("identical", "returns an identical string n times")
+# addition = AdditionAF("addition", "adds two number together")
+# final_answer = FinalAnswerAF("final_answer", "your final answer to the user")
+# document_reader = ReadDocumentAF(
+#     "read_document", "will return the content of the document", engine
+# )
+# chunk_reader = ReadChunkAF(
+#     "read_chunk",
+#     "will return the content of a document chunk (index starts at 0)",
+#     engine,
+# )
 
-agent_answer = my_agent.run(instructions)
-my_agent.save_history("agent_history.txt")
+# journalist = JournalistAF(
+#     "journalist", "will write a news report with great skill about any subject", engine
+# )
+# metadata = DocumentMetaDataAF(
+#     "metadata",
+#     "returns metadata about the document (type, number of pages, chunks, letters etc.)",
+#     engine,
+# )
+
+# my_agent = Agent(
+#     engine,
+#     [
+#         final_answer,
+#         journalist,
+#         identical,
+#         addition,
+#         metadata,
+#         document_reader,
+#         chunk_reader,
+#     ],
+# )
+
+
+# instructions = """I want you to summarize what this document is and what it talks about.
+# More precisely, I want you to tell me the overall structure of the document (what are the main parts? what language? what are the motivations? who's the author?)
+# Then I want you to tell me more about the document content and to give example of similar documents that could be useful as references.
+# Finally, I want you to propose improvements on the document. Please give a rather in-depth answer."""
+
+# agent_answer = my_agent.run(instructions)
+# my_agent.save_history("agent_history.txt")

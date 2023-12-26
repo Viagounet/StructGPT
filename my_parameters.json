@@ -1,0 +1,29 @@
+{
+    "chunking_strategy": {
+        ".txt": {
+            "strategy": "tokens",
+            "max_tokens": 300,
+            "pattern": "\n"
+        },
+        ".py": {
+            "strategy": "pattern",
+            "pattern": "\n"
+        },
+        ".pdf": {
+            "strategy": "tokens",
+            "max_tokens": 300,
+            "pattern": "\n"
+        },
+        "http": {
+            "strategy": "tokens",
+            "max_tokens": 512
+        },
+        "4chan": {
+            "strategy": "pattern",
+            "pattern": "------------"
+        }
+    },
+    "ACCESS":{
+        "google_search": {"API_KEY": "AIzaSyAn8kuV7Db9vBm2zY0icyX02ry-BFZJU1c", "CSE_ID": "f0eaebf2cd7254595"}
+    }
+}
