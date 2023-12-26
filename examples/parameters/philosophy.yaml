@@ -41,7 +41,7 @@ processing:
       strategy: tokens
       kwargs:
         max_tokens: 512
-        pattern: ""
+        pattern: "\n"
 
   chunks_post_processing:
     txt:
