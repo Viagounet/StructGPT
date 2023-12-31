@@ -4,16 +4,15 @@ import yaml
 from dash import html, dcc, Input, Output, State, MATCH, ALL
 import json
 from engine import Engine
-#from engine_mistral import MistralEngine
+from engine_mistral import MistralEngine
 
 with open("examples/parameters/philosophy.yaml", "r") as file:
     parameters = yaml.safe_load(file)
 
-engine = Engine("gpt-3.5-turbo", parameters)
+#engine = Engine("gpt-3.5-turbo", parameters)
+offload = True
+engine = MistralEngine("Viag/mixtral-8x7b-instruct-0.1-philosopher-fr_v1", parameters, "Vous êtes un professeur de philosophie dont le but est de répondre aux questions d'un élève.", offload)
 
-with open("../dataset_philo/0-2.json", "r", encoding="utf-8") as f:
-    a = json.load(f)
-prompt = a["prompt"].split("### Response:")[1]
 app = dash.Dash(external_stylesheets=[dbc.themes.BOOTSTRAP])
 
 def split_markdown(text):
@@ -57,7 +56,7 @@ app.layout = html.Div([
     html.H1("StructGPT - Interface"),
     dbc.Textarea(placeholder="Write your query here", id="query-text-area"),
     dbc.Button("Send", id="send-button", className="mb-2"),
-    html.Div(create_text_div(prompt), id="output", className="p-2")
+    html.Div("", id="output", className="p-2")
 ], className="d-flex flex-column p-2")
 
 @app.callback(
@@ -68,7 +67,7 @@ app.layout = html.Div([
 )
 def update_markdown(n, query):
     if n:
-        ans = engine.query(query, max_tokens=2048, temperature=0.2)
+        ans = engine.query(query, max_tokens=128, temperature=0.2)
         return create_text_div(ans.content)
     return ""
 
