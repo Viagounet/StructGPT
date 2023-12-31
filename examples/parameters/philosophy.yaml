@@ -9,7 +9,7 @@ processing:
     txt:
       type: TextDocument
     pdf:
-      type: PDFDocument
+      type: ReadablePDFDocument
     py:
       type: TextDocument
     imageboard_thread:
@@ -26,8 +26,8 @@ processing:
     pdf:
       strategy: tokens
       kwargs:
-        max_tokens: 512
-        pattern: " "
+        max_tokens: 2048
+        pattern: "\n"
     py:
       strategy: tokens
       kwargs:

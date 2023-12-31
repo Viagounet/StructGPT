@@ -6,6 +6,18 @@ import urllib.request
 from pptx import Presentation
 import glob
 
+import fitz  # PyMuPDF
+
+def extract_text_from_pdf(pdf_path):
+    document = fitz.open(pdf_path)
+    full_text = ""
+    for page_num in range(len(document)):
+        print(page_num)
+        page = document.load_page(page_num)
+        text = page.get_text()
+        full_text += text
+    document.close()
+    return full_text
 
 def pdf_to_text(pdf_path):
     # Convert the PDF to images

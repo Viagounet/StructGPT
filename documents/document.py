@@ -14,6 +14,7 @@ from documents.parsing_utils import (
     pdf_to_text,
     pptx_to_text,
     thread_parsing,
+    extract_text_from_pdf
 )
 from process.chunking_strategy import *
 
@@ -167,7 +168,7 @@ class Document:
         chunks = chunking_function(self, **chunking_kwargs)
 
         new_chunks = []
-        for chunk in chunks:
+        for i, chunk in enumerate(chunks):
             chunk.content = post_processing_function(
                 chunk.content, **post_processing_kwargs
             )
@@ -405,3 +406,9 @@ class Library:
 
     def __str__(self) -> str:
         return str(self.folders.values())
+
+class ReadablePDFDocument(Document):
+    def __init__(self, path) -> None:
+        content = extract_text_from_pdf(path)
+        self.path = path
+        super().__init__(content, path)
